@@ -1,0 +1,26 @@
+h1 { font-size: 22px; font-weight: 700; margin-bottom: 20px; }
+
+.profile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+
+  h2 { font-size: 16px; font-weight: 600; margin-bottom: 14px; }
+}
+
+dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 8px 16px;
+  font-size: 14px;
+
+  dt { color: var(--text-muted); font-weight: 500; }
+  dd { }
+}
+
+.groups-list {
+  list-style: none;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

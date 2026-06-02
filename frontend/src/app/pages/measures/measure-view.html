@@ -1,0 +1,116 @@
+<app-navbar />
+
+<div class="page">
+  <div class="page-header">
+    <div>
+      <a [routerLink]="['/sensors', sensorId, 'data']" class="back-link">← Données</a>
+      <h1>Grandeurs calculées — {{ sensor()?.name ?? '…' }}</h1>
+    </div>
+    <button class="btn btn-primary" (click)="openCreate()">+ Nouvelle grandeur</button>
+  </div>
+
+  <!-- Plage temporelle -->
+  <div class="range-bar card">
+    <span class="range-label">Période :</span>
+    <div class="form-group inline">
+      <label>Début</label>
+      <input type="datetime-local" [(ngModel)]="startDate">
+    </div>
+    <div class="form-group inline">
+      <label>Fin</label>
+      <input type="datetime-local" [(ngModel)]="endDate">
+    </div>
+    <button class="btn btn-primary" (click)="refreshAll()">Actualiser les graphiques</button>
+  </div>
+
+  <!-- Formulaire grandeur -->
+  @if (showForm()) {
+    <div class="form-panel card">
+      <h2>{{ editingId() ? 'Modifier la grandeur' : 'Nouvelle grandeur calculée' }}</h2>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nom</label>
+          <input [(ngModel)]="formName" placeholder="Ex : Température en °F">
+        </div>
+        <div class="form-group">
+          <label>Unité (optionnel)</label>
+          <input [(ngModel)]="formUnit" placeholder="°C, kPa, %…">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Formule Python</label>
+        <input [(ngModel)]="formFormula" placeholder="row['temperature'] * 9/5 + 32" class="formula-input">
+        <small class="hint">{{ formulaHint() }}</small>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Description</label>
+          <input [(ngModel)]="formDesc" placeholder="Optionnel">
+        </div>
+        <div class="form-group">
+          <label>Couleur du graphique</label>
+          <div class="color-pick">
+            <input type="color" [(ngModel)]="formColor">
+            <input [(ngModel)]="formColor" placeholder="#3b82f6" style="width:100px">
+          </div>
+        </div>
+      </div>
+
+      @if (formError()) {
+        <p class="error-msg">{{ formError() }}</p>
+      }
+
+      <div class="form-actions">
+        <button class="btn btn-primary" (click)="saveForm()" [disabled]="saving()">
+          {{ saving() ? 'Enregistrement…' : 'Enregistrer' }}
+        </button>
+        <button class="btn btn-ghost" (click)="showForm.set(false)">Annuler</button>
+      </div>
+    </div>
+  }
+
+  @if (loading()) {
+    <p class="loading-msg">Chargement…</p>
+  } @else if (error()) {
+    <p class="error-msg">{{ error() }}</p>
+  } @else if (measures().length === 0) {
+    <div class="empty-state card">
+      <p>Aucune grandeur définie pour ce capteur.</p>
+      <p class="hint">Créez une grandeur en définissant une formule Python appliquée sur les champs de chaque mesure.</p>
+      <button class="btn btn-primary" style="margin-top:12px" (click)="openCreate()">Créer une grandeur</button>
+    </div>
+  } @else {
+    <div class="charts-grid">
+      @for (m of measures(); track m.id) {
+        <div class="chart-card card">
+          <div class="chart-card-header">
+            <div>
+              <span class="measure-name" [style.color]="m.color">{{ m.name }}</span>
+              @if (m.unit) { <span class="badge badge-gray">{{ m.unit }}</span> }
+            </div>
+            <div class="chart-actions">
+              <button class="btn btn-ghost btn-sm" (click)="computeAndDraw(m)">↺</button>
+              <button class="btn btn-ghost btn-sm" (click)="openEdit(m)">Modifier</button>
+              <button class="btn btn-danger btn-sm" (click)="deleteMeasure(m)">Supprimer</button>
+            </div>
+          </div>
+
+          @if (m.description) {
+            <p class="measure-desc">{{ m.description }}</p>
+          }
+
+          <div class="formula-display">
+            <code>{{ m.formula }}</code>
+          </div>
+
+          <div class="chart-container">
+            <canvas [id]="'chart-' + m.id"></canvas>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

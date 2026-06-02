@@ -1,0 +1,56 @@
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 24px;
+  h1 { font-size: 22px; font-weight: 700; }
+}
+
+.form-panel {
+  margin-bottom: 24px;
+  h2 { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+  h3 { font-size: 15px; font-weight: 600; margin-bottom: 8px; }
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.hint { font-size: 13px; color: var(--text-muted); margin-bottom: 10px; code { background: var(--bg); padding: 1px 5px; border-radius: 3px; } }
+
+.users-section { margin-top: 24px; border-top: 1px solid var(--border); padding-top: 20px; }
+
+.add-user {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  input { flex: 1; }
+}
+
+.user-list {
+  list-style: none;
+  li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 12px;
+    border-radius: 6px;
+    background: var(--bg);
+    margin-bottom: 6px;
+    font-size: 14px;
+  }
+}
+
+.sensor-name { font-weight: 500; }
+.sensor-slug { font-size: 12px; color: var(--text-muted); font-family: monospace; }
+
+.actions { display: flex; gap: 6px; flex-wrap: wrap; }
+.btn-sm  { padding: 4px 10px; font-size: 13px; }

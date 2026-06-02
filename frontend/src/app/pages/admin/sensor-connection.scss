@@ -1,0 +1,97 @@
+.page-header {
+  margin-bottom: 24px;
+  h1 { font-size: 22px; font-weight: 700; margin: 4px 0; }
+  .back-link { font-size: 13px; color: var(--text-muted); }
+  .subtitle  { font-size: 13px; color: var(--text-muted); font-family: monospace; }
+}
+
+.api-key-card {
+  margin-bottom: 16px;
+
+  h3   { font-size: 16px; font-weight: 600; margin-bottom: 4px; }
+  .hint { font-size: 13px; color: var(--text-muted); margin: 6px 0;
+          code { background: var(--bg); padding: 2px 6px; border-radius: 4px; font-size: 12px; word-break: break-all; } }
+}
+
+.key-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 10px 14px;
+  margin: 10px 0;
+
+  code { flex: 1; font-size: 13px; word-break: break-all; color: #7c3aed; }
+}
+
+.method-tabs {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+}
+
+.method-tab {
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all .15s;
+
+  &.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+  }
+}
+
+.method-content {
+  .method-desc { color: var(--text-muted); font-size: 14px; margin-bottom: 16px; }
+}
+
+.config-fields {
+  h4 { font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 0 16px;
+  h4 { grid-column: 1 / -1; }
+  margin-bottom: 20px;
+}
+
+.required { color: var(--danger); }
+
+.guide-section {
+  h4 { font-size: 14px; font-weight: 600; margin-bottom: 10px; }
+}
+
+.guide-steps {
+  li {
+    margin-bottom: 8px;
+    code {
+      display: block;
+      background: #1e293b;
+      color: #e2e8f0;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 13px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+  }
+}
+
+.save-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.save-ok   { color: var(--success); font-size: 14px; font-weight: 500; }
+.btn-sm    { padding: 4px 10px; font-size: 13px; }

@@ -1,0 +1,20 @@
+<nav class="navbar">
+  <a class="brand" routerLink="/">Analyse LoRa</a>
+
+  <div class="nav-links">
+    <a routerLink="/"        routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Tableau de bord</a>
+    <a routerLink="/sensors" routerLinkActive="active">Capteurs</a>
+    @if (isDeveloper) {
+      <a routerLink="/admin/sensors" routerLinkActive="active">Admin</a>
+    }
+    <a routerLink="/profile" routerLinkActive="active">Profil</a>
+  </div>
+
+  <div class="nav-user">
+    <span class="username">{{ username }}</span>
+    @if (isDeveloper) {
+      <span class="badge-dev">developer</span>
+    }
+    <button class="btn-logout" (click)="logout()">Déconnexion</button>
+  </div>
+</nav>

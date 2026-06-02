@@ -1,0 +1,40 @@
+<app-navbar />
+
+<div class="page">
+  <h1>Mon profil</h1>
+
+  @if (loading()) {
+    <p class="loading-msg">Chargement…</p>
+  } @else if (error()) {
+    <p class="error-msg">{{ error() }}</p>
+  } @else if (me()) {
+    <div class="profile-grid">
+      <div class="card">
+        <h2>Informations</h2>
+        <dl>
+          <dt>Nom d'utilisateur</dt><dd>{{ me().username }}</dd>
+          <dt>Email</dt>           <dd>{{ me().email }}</dd>
+          <dt>Développeur</dt>
+          <dd>
+            <span class="badge" [class]="me().is_developer ? 'badge-green' : 'badge-gray'">
+              {{ me().is_developer ? 'Oui' : 'Non' }}
+            </span>
+          </dd>
+        </dl>
+      </div>
+
+      <div class="card">
+        <h2>Groupes</h2>
+        @if (me().groups?.length) {
+          <ul class="groups-list">
+            @for (g of me().groups; track g) {
+              <li><span class="badge badge-blue">{{ g }}</span></li>
+            }
+          </ul>
+        } @else {
+          <p class="empty-msg" style="padding:8px 0;text-align:left">Aucun groupe</p>
+        }
+      </div>
+    </div>
+  }
+</div>

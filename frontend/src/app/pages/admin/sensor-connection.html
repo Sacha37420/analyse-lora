@@ -1,0 +1,99 @@
+<app-navbar />
+
+<div class="page">
+  <div class="page-header">
+    <div>
+      <a [routerLink]="['/admin/sensors', sensorId]" class="back-link">← Retour au capteur</a>
+      <h1>Configuration de connexion</h1>
+      @if (info()) {
+        <p class="subtitle">{{ info()!.slug }}</p>
+      }
+    </div>
+  </div>
+
+  @if (loading()) {
+    <p class="loading-msg">Chargement…</p>
+  } @else if (error()) {
+    <p class="error-msg">{{ error() }}</p>
+  } @else if (info()) {
+
+    <!-- Clé API pour ingestion -->
+    <div class="card api-key-card">
+      <div class="api-key-header">
+        <div>
+          <h3>Clé API d'ingestion</h3>
+          <p class="hint">Utilisez cette clé pour envoyer des données vers : <code>POST {{ apiUrl }}/api/sensors/{{ info()!.sensor_id }}/data/</code></p>
+        </div>
+      </div>
+      <div class="key-display">
+        <code>{{ info()!.api_key }}</code>
+        <button class="btn btn-ghost btn-sm" (click)="copyToClipboard(info()!.api_key)">Copier</button>
+      </div>
+      <p class="hint">Header à inclure dans vos requêtes : <code>Authorization: Bearer {{ info()!.api_key }}</code></p>
+    </div>
+
+    <!-- Sélection de la méthode -->
+    <div class="card">
+      <h3>Méthode de connexion</h3>
+      <div class="method-tabs">
+        @for (m of methods(); track m.protocol) {
+          <button
+            class="method-tab"
+            [class.active]="activeMethodTab() === m.protocol"
+            (click)="selectMethod(m.protocol)"
+          >
+            {{ m.label }}
+          </button>
+        }
+      </div>
+
+      @if (activeMethod) {
+        <div class="method-content">
+          <p class="method-desc">{{ activeMethod.description }}</p>
+
+          <!-- Champs de configuration -->
+          @if (activeMethod.fields.length > 0) {
+            <div class="config-fields">
+              <h4>Paramètres</h4>
+              @for (field of activeMethod.fields; track field.key) {
+                <div class="form-group">
+                  <label>
+                    {{ field.label }}
+                    @if (field.required) { <span class="required">*</span> }
+                  </label>
+                  <input
+                    [value]="fieldValue(field.key)"
+                    (input)="setField(field.key, $any($event.target).value)"
+                    [placeholder]="field.placeholder"
+                  >
+                </div>
+              }
+            </div>
+          }
+
+          <!-- Guide d'intégration -->
+          <div class="guide-section">
+            <h4>Guide d'intégration</h4>
+            <ol class="guide-steps">
+              @for (step of activeMethod.guide_steps; track $index) {
+                <li><code>{{ interpolate(step) }}</code></li>
+              }
+            </ol>
+          </div>
+        </div>
+      }
+
+      <div class="save-actions">
+        <button class="btn btn-primary" (click)="save()" [disabled]="saving()">
+          {{ saving() ? 'Enregistrement…' : 'Sauvegarder la configuration' }}
+        </button>
+        @if (saveOk()) {
+          <span class="save-ok">✓ Enregistré</span>
+        }
+        @if (error()) {
+          <span class="error-msg">{{ error() }}</span>
+        }
+      </div>
+    </div>
+  }
+</div>

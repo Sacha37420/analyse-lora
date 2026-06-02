@@ -1,0 +1,141 @@
+<app-navbar />
+
+<div class="page">
+  <div class="page-header">
+    <h1>Administration des capteurs</h1>
+    <button class="btn btn-primary" (click)="openCreate()">+ Nouveau capteur</button>
+  </div>
+
+  <!-- Formulaire création / édition -->
+  @if (showForm()) {
+    <div class="form-panel card">
+      <h2>{{ editing() ? 'Modifier ' + editing()!.name : 'Nouveau capteur' }}</h2>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nom</label>
+          <input [(ngModel)]="formName" (blur)="autoSlug()" placeholder="Ex : Capteur Température Serre">
+        </div>
+        <div class="form-group">
+          <label>Slug (identifiant court)</label>
+          <input [(ngModel)]="formSlug" placeholder="ex: temp-serre-01">
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label>Description</label>
+        <textarea [(ngModel)]="formDesc" rows="2" placeholder="Description optionnelle"></textarea>
+      </div>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Protocole de connexion</label>
+          <select [(ngModel)]="formProtocol">
+            @for (p of protocols; track p.value) {
+              <option [value]="p.value">{{ p.label }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Actif</label>
+          <select [(ngModel)]="formActive">
+            <option [ngValue]="true">Oui</option>
+            <option [ngValue]="false">Non</option>
+          </select>
+        </div>
+      </div>
+
+      @if (formError()) {
+        <p class="error-msg">{{ formError() }}</p>
+      }
+
+      <div class="form-actions">
+        <button class="btn btn-primary" (click)="saveForm()" [disabled]="saving()">
+          {{ saving() ? 'Enregistrement…' : 'Enregistrer' }}
+        </button>
+        <button class="btn btn-ghost" (click)="showForm.set(false)">Annuler</button>
+        @if (editing()) {
+          <a [routerLink]="['/admin/sensors', editing()!.id, 'connection']" class="btn btn-ghost">
+            Connexion →
+          </a>
+        }
+      </div>
+
+      <!-- Gestion accès si édition -->
+      @if (editing()) {
+        <div class="users-section">
+          <h3>Utilisateurs ayant accès</h3>
+          <p class="hint">Les membres du groupe <code>developers</code> ont toujours accès à tous les capteurs.</p>
+
+          <div class="add-user">
+            <input [(ngModel)]="newEmail" placeholder="email@example.com" (keyup.enter)="addUser()">
+            <button class="btn btn-primary" (click)="addUser()">Ajouter</button>
+          </div>
+
+          @if (usersError()) {
+            <p class="error-msg">{{ usersError() }}</p>
+          }
+
+          @if (userAccesses().length > 0) {
+            <ul class="user-list">
+              @for (acc of userAccesses(); track acc.id) {
+                <li>
+                  <span>{{ acc.user_email }}</span>
+                  <button class="btn btn-danger btn-sm" (click)="removeUser(acc.user_email)">Révoquer</button>
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="empty-msg" style="text-align:left;padding:8px 0">Aucun accès explicite configuré.</p>
+          }
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Liste des capteurs -->
+  @if (loading()) {
+    <p class="loading-msg">Chargement…</p>
+  } @else if (sensors().length === 0) {
+    <p class="empty-msg">Aucun capteur créé.</p>
+  } @else {
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>Capteur</th>
+            <th>Protocole</th>
+            <th>État</th>
+            <th>Lectures</th>
+            <th>Utilisateurs</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (s of sensors(); track s.id) {
+            <tr>
+              <td>
+                <div class="sensor-name">{{ s.name }}</div>
+                <div class="sensor-slug">{{ s.slug }}</div>
+              </td>
+              <td><span class="badge badge-blue">{{ s.protocol_display }}</span></td>
+              <td>
+                <span class="badge" [class]="s.is_active ? 'badge-green' : 'badge-gray'">
+                  {{ s.is_active ? 'actif' : 'inactif' }}
+                </span>
+              </td>
+              <td>{{ s.reading_count }}</td>
+              <td>{{ s.user_accesses?.length ?? 0 }}</td>
+              <td class="actions">
+                <button class="btn btn-ghost btn-sm" (click)="openEdit(s)">Modifier</button>
+                <a [routerLink]="['/admin/sensors', s.id, 'connection']" class="btn btn-ghost btn-sm">Connexion</a>
+                <a [routerLink]="['/sensors', s.id, 'data']"             class="btn btn-ghost btn-sm">Données</a>
+                <button class="btn btn-danger btn-sm" (click)="deleteSensor(s)">Supprimer</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

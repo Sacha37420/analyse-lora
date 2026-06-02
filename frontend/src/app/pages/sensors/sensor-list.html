@@ -1,0 +1,59 @@
+<app-navbar />
+
+<div class="page">
+  <div class="page-header">
+    <h1>Mes capteurs</h1>
+    @if (isDeveloper) {
+      <a routerLink="/admin/sensors" class="btn btn-primary">+ Nouveau capteur</a>
+    }
+  </div>
+
+  @if (loading()) {
+    <p class="loading-msg">Chargement…</p>
+  } @else if (error()) {
+    <p class="error-msg">{{ error() }}</p>
+  } @else if (sensors().length === 0) {
+    <p class="empty-msg">Aucun capteur accessible.</p>
+  } @else {
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>Capteur</th>
+            <th>Protocole</th>
+            <th>État</th>
+            <th>Lectures</th>
+            <th>Dernière mesure</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (s of sensors(); track s.id) {
+            <tr>
+              <td>
+                <div class="sensor-name">{{ s.name }}</div>
+                <div class="sensor-slug">{{ s.slug }}</div>
+              </td>
+              <td><span class="badge badge-blue">{{ s.protocol_display }}</span></td>
+              <td>
+                <span class="badge" [class]="s.is_active ? 'badge-green' : 'badge-gray'">
+                  {{ s.is_active ? 'actif' : 'inactif' }}
+                </span>
+              </td>
+              <td>{{ s.reading_count }}</td>
+              <td>{{ (s.last_reading?.timestamp | date:'dd/MM/yy HH:mm') ?? '—' }}</td>
+              <td class="actions">
+                <a [routerLink]="['/sensors', s.id, 'data']"     class="btn btn-ghost btn-sm">Données</a>
+                <a [routerLink]="['/sensors', s.id, 'measures']" class="btn btn-ghost btn-sm">Graphiques</a>
+                @if (isDeveloper) {
+                  <a [routerLink]="['/admin/sensors', s.id]"             class="btn btn-ghost btn-sm">Config</a>
+                  <a [routerLink]="['/admin/sensors', s.id, 'connection']" class="btn btn-ghost btn-sm">Connexion</a>
+                }
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>
