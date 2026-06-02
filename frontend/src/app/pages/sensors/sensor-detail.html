@@ -1,0 +1,78 @@
+<app-navbar />
+
+<div class="page">
+  <div class="page-header">
+    <div>
+      <a routerLink="/sensors" class="back-link">← Capteurs</a>
+      <h1>{{ sensor()?.name ?? 'Capteur' }}</h1>
+      @if (sensor()) {
+        <p class="subtitle">
+          <span class="badge badge-blue">{{ sensor()!.protocol_display }}</span>
+          &nbsp;{{ sensor()!.reading_count }} lectures totales
+        </p>
+      }
+    </div>
+    @if (sensor()) {
+      <a [routerLink]="['/sensors', sensorId, 'measures']" class="btn btn-primary">Graphiques</a>
+    }
+  </div>
+
+  <!-- Filtres -->
+  <div class="filters card">
+    <div class="form-group inline">
+      <label>Début</label>
+      <input type="datetime-local" [(ngModel)]="startDate">
+    </div>
+    <div class="form-group inline">
+      <label>Fin</label>
+      <input type="datetime-local" [(ngModel)]="endDate">
+    </div>
+    <button class="btn btn-primary" (click)="loadData(1)">Filtrer</button>
+    <button class="btn btn-ghost" (click)="startDate=''; endDate=''; loadData(1)">Réinitialiser</button>
+  </div>
+
+  @if (loading()) {
+    <p class="loading-msg">Chargement des données…</p>
+  } @else if (error()) {
+    <p class="error-msg">{{ error() }}</p>
+  } @else if (!page() || page()!.count === 0) {
+    <p class="empty-msg">Aucune donnée dans cette plage.</p>
+  } @else {
+    <div class="data-info">
+      {{ page()!.count }} lectures
+      — page {{ currentPage }}/{{ totalPages }}
+    </div>
+
+    <div class="table-wrapper card">
+      <table>
+        <thead>
+          <tr>
+            @for (col of allColumns; track col) {
+              <th>{{ col }}</th>
+            }
+          </tr>
+        </thead>
+        <tbody>
+          @for (r of page()!.results; track r.id) {
+            <tr>
+              @for (col of allColumns; track col) {
+                <td>{{ cellValue(r, col) }}</td>
+              }
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Pagination -->
+    <div class="pagination">
+      <button class="btn btn-ghost btn-sm" [disabled]="currentPage <= 1" (click)="loadData(currentPage - 1)">
+        ← Précédent
+      </button>
+      <span>{{ currentPage }} / {{ totalPages }}</span>
+      <button class="btn btn-ghost btn-sm" [disabled]="currentPage >= totalPages" (click)="loadData(currentPage + 1)">
+        Suivant →
+      </button>
+    </div>
+  }
+</div>

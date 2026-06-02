@@ -1,0 +1,83 @@
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+
+  h1 { font-size: 22px; font-weight: 700; margin: 4px 0; }
+  .back-link { font-size: 13px; color: var(--text-muted); }
+}
+
+.range-bar {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 20px;
+
+  .range-label { font-size: 14px; font-weight: 500; align-self: center; }
+
+  .form-group.inline {
+    flex-direction: row;
+    align-items: center;
+    margin: 0;
+    gap: 8px;
+  }
+}
+
+.form-panel {
+  margin-bottom: 24px;
+  h2 { font-size: 18px; font-weight: 600; margin-bottom: 16px; }
+}
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.formula-input { font-family: monospace; }
+
+.hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; display: block; }
+
+.color-pick { display: flex; gap: 8px; align-items: center; }
+
+.form-actions { display: flex; gap: 8px; margin-top: 8px; }
+
+.empty-state { text-align: center; padding: 40px; p { margin-bottom: 8px; } }
+
+.charts-grid {
+  display: grid;
+  gap: 20px;
+}
+
+.chart-card {
+  .chart-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+
+  .measure-name { font-size: 17px; font-weight: 600; margin-right: 8px; }
+  .measure-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
+
+  .chart-actions { display: flex; gap: 6px; }
+
+  .formula-display {
+    background: #f8fafc;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 12px;
+    margin-bottom: 14px;
+
+    code { font-size: 13px; color: #7c3aed; }
+  }
+
+  .chart-container {
+    position: relative;
+    height: 260px;
+  }
+}
+
+.btn-sm { padding: 4px 10px; font-size: 13px; }

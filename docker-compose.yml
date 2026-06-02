@@ -1,0 +1,32 @@
+version: "3.9"
+
+networks:
+  sso-net:
+    external: true
+    name: sso-lab_sso-net
+  dev-net:
+    external: true
+    name: dev-net
+
+services:
+
+  backend:
+    build: ./backend
+    container_name: analyse-lora-backend
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "8086:8000"
+    networks:
+      - sso-net
+      - dev-net
+    volumes:
+      - ./backend:/app
+
+  frontend:
+    build: ./frontend
+    container_name: analyse-lora-frontend
+    restart: unless-stopped
+    env_file: .env
+    ports:
+      - "4204:80"

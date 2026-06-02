@@ -1,0 +1,73 @@
+<app-navbar />
+
+<div class="page">
+  <div class="page-header">
+    <div>
+      <h1>Tableau de bord</h1>
+      <p class="subtitle">Bienvenue, <strong>{{ username }}</strong> — voici vos capteurs LoRa</p>
+    </div>
+    @if (isDeveloper) {
+      <a routerLink="/admin/sensors" class="btn btn-primary">+ Nouveau capteur</a>
+    }
+  </div>
+
+  @if (loading()) {
+    <p class="loading-msg">Chargement des capteurs…</p>
+  } @else if (error()) {
+    <p class="error-msg">{{ error() }}</p>
+  } @else if (sensors().length === 0) {
+    <div class="empty-state card">
+      <p>Aucun capteur accessible pour votre compte.</p>
+      @if (isDeveloper) {
+        <a routerLink="/admin/sensors" class="btn btn-primary" style="margin-top:12px">Créer un capteur</a>
+      }
+    </div>
+  } @else {
+    <div class="sensor-grid">
+      @for (sensor of sensors(); track sensor.id) {
+        <div class="sensor-card card" [class.inactive]="!sensor.is_active">
+          <div class="sensor-card-header">
+            <div>
+              <span class="sensor-name">{{ sensor.name }}</span>
+              <span class="badge" [class]="sensor.is_active ? 'badge-green' : 'badge-gray'">
+                {{ sensor.is_active ? 'actif' : 'inactif' }}
+              </span>
+            </div>
+            <span class="badge badge-blue">{{ sensor.protocol_display }}</span>
+          </div>
+
+          @if (sensor.description) {
+            <p class="sensor-desc">{{ sensor.description }}</p>
+          }
+
+          <div class="sensor-stats">
+            <div class="stat">
+              <span class="stat-label">Lectures</span>
+              <span class="stat-value">{{ sensor.reading_count }}</span>
+            </div>
+            @if (sensor.last_reading) {
+              <div class="stat">
+                <span class="stat-label">Dernière mesure</span>
+                <span class="stat-value">{{ sensor.last_reading.timestamp | date:'dd/MM HH:mm' }}</span>
+              </div>
+              @for (key of dataKeys(sensor); track key) {
+                <div class="stat">
+                  <span class="stat-label">{{ key }}</span>
+                  <span class="stat-value">{{ dataValue(sensor, key) }}</span>
+                </div>
+              }
+            }
+          </div>
+
+          <div class="sensor-actions">
+            <a [routerLink]="['/sensors', sensor.id, 'data']" class="btn btn-ghost">Données</a>
+            <a [routerLink]="['/sensors', sensor.id, 'measures']" class="btn btn-ghost">Graphiques</a>
+            @if (isDeveloper) {
+              <a [routerLink]="['/admin/sensors', sensor.id]" class="btn btn-ghost">Config</a>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

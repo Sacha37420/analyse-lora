@@ -1,0 +1,41 @@
+.page-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  margin-bottom: 20px;
+
+  h1        { font-size: 22px; font-weight: 700; margin: 4px 0; }
+  .back-link { font-size: 13px; color: var(--text-muted); }
+  .subtitle  { font-size: 13px; color: var(--text-muted); }
+}
+
+.filters {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+
+  .form-group.inline {
+    flex-direction: row;
+    align-items: center;
+    margin: 0;
+    gap: 8px;
+  }
+}
+
+.data-info { font-size: 13px; color: var(--text-muted); margin-bottom: 8px; }
+
+.table-wrapper { overflow-x: auto; padding: 0; }
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 12px;
+  font-size: 14px;
+  color: var(--text-muted);
+}
+
+.btn-sm { padding: 4px 10px; font-size: 13px; }
