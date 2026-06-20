@@ -26,7 +26,7 @@ urlpatterns = [
          {'path': 'oauth2-redirect.html', 'document_root': _SIDECAR_DIR}, name='oauth2-redirect'),
     path('api/docs/oauth2-redirect.js',  static_serve,
          {'path': 'oauth2-redirect.js',  'document_root': _SIDECAR_DIR}),
-    path('', lambda request: HttpResponseRedirect('/api/docs/')),
+    path('', lambda request: HttpResponseRedirect(request.META.get('SCRIPT_NAME', '') + '/api/docs/')),
     path('api/', include('api.urls')),
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/docs/',   CustomSwaggerUIView.as_view(), name='swagger-ui'),
