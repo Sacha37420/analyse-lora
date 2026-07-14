@@ -1,0 +1,431 @@
+<app-navbar />
+
+<div class="aide-layout">
+
+  <!-- ── Sommaire ─────────────────────────────────────────────────────────── -->
+  <aside class="toc">
+    <h2>Sommaire</h2>
+    <ol>
+      @for (s of sections; track s.id) {
+        <li><a (click)="scrollTo(s.id)">{{ s.title }}</a></li>
+      }
+    </ol>
+  </aside>
+
+  <!-- ── Contenu ──────────────────────────────────────────────────────────── -->
+  <article class="guide">
+
+    <header class="guide-header">
+      <h1>Guide LoRa</h1>
+      <p class="lead">
+        De l'achat du capteur à la courbe à l'écran. Aucun prérequis en radio&nbsp;:
+        comptez un week-end pour aller du carton à la première mesure.
+      </p>
+    </header>
+
+    <!-- ── 1 ── -->
+    <section id="comprendre">
+      <h2>1. Comprendre un capteur LoRa</h2>
+
+      <h3>LoRa n'est pas LoRaWAN</h3>
+      <p>
+        Deux mots qu'on confond en permanence, et toute la suite en dépend.
+        <strong>LoRa</strong> est une <em>modulation radio</em> qui travaille dans les bandes libres
+        sub-GHz — <strong>868 MHz en Europe</strong>. Elle sait décoder un signal noyé sous le bruit,
+        d'où une portée énorme pour une puissance ridicule.
+        <strong>LoRaWAN</strong> est le <em>protocole réseau</em> posé au-dessus&nbsp;: identités,
+        chiffrement, gestion des passerelles.
+      </p>
+      <div class="callout callout-key">
+        Le chiffrement est dans <strong>LoRaWAN</strong>, pas dans LoRa. C'est la source du
+        malentendu de sécurité le plus fréquent.
+      </div>
+
+      <h3>Des caractéristiques extrêmes, dans les deux sens</h3>
+      <table>
+        <tbody>
+          <tr><th>Portée</th><td>2–5 km en ville, 10–15 km en terrain dégagé</td></tr>
+          <tr><th>Autonomie</th><td>2 à 10 ans sur pile</td></tr>
+          <tr><th>Débit</th><td>quelques dizaines d'octets, quelques messages par heure</td></tr>
+        </tbody>
+      </table>
+      <p>
+        Ce dernier point est le plus mal compris. <strong>LoRa n'est pas un Wi-Fi lent, c'est un
+        autre métier.</strong> On n'envoie pas un fichier, on envoie 10 octets toutes les quinze
+        minutes.
+      </p>
+      <p>Deux limites vous encadrent, et elles ne sont pas négociables&nbsp;:</p>
+      <ul>
+        <li>
+          <strong>Duty cycle légal de 1 %</strong> sur la bande 868 MHz&nbsp;: votre capteur n'a le
+          droit d'émettre qu'environ <strong>36 secondes par heure</strong>.
+        </li>
+        <li>
+          <strong>Fair Use Policy de TTN</strong>&nbsp;: ~30 secondes de temps d'antenne par jour en
+          montant, et <strong>10 downlinks par jour</strong> maximum.
+        </li>
+      </ul>
+      <p>N'émettez donc pas « toutes les 10 secondes pour tester » : vous vous feriez taire.</p>
+
+      <h3>La chaîne complète</h3>
+      <pre class="chain">Capteur  ──radio 868 MHz──►  Passerelle  ──IP──►  Serveur réseau  ──webhook──►  analyse-lora
+(pile)                       (gateway)             (TTN/ChirpStack)              (cette app)</pre>
+
+      <div class="callout callout-warn">
+        <strong>Quand LoRa est le mauvais choix.</strong> Si votre besoin est à 20 mètres avec une
+        prise de courant à côté, prenez du Zigbee, du BLE ou du Wi-Fi. LoRa ne brille que quand il
+        n'y a ni réseau ni électricité : le fond du jardin, la cave, une cabane, une ruche, un
+        compteur d'eau, un champ.
+      </div>
+    </section>
+
+    <!-- ── 2 ── -->
+    <section id="confidentialite">
+      <h2>2. Qui peut lire mes données&nbsp;?</h2>
+
+      <h3>Oui, n'importe qui peut capter les trames</h3>
+      <p>
+        Le 868 MHz est une bande libre, en clair dans l'air. Toute personne équipée d'un récepteur
+        LoRa (une carte à 20 €) et située à portée capte vos paquets. Il n'y a rien à « pirater » :
+        c'est une diffusion radio publique. C'est d'ailleurs le principe <em>assumé</em> de The
+        Things Network — ce sont les passerelles d'inconnus qui relaient vos capteurs.
+      </p>
+
+      <h3>Mais le contenu est chiffré de bout en bout</h3>
+      <p>
+        LoRaWAN chiffre la charge utile en <strong>AES-128</strong> avec une clé
+        (<code>AppSKey</code>) que seuls le capteur et le serveur applicatif possèdent. Ni la
+        passerelle ni le serveur réseau ne peuvent la lire. Un attaquant ne peut ni lire, ni injecter
+        une fausse mesure, ni rejouer un ancien message.
+      </p>
+
+      <h3>Ce qui fuite quand même : les métadonnées</h3>
+      <p>
+        L'adresse du capteur (<code>DevAddr</code>, stable, donc <strong>traçable</strong>),
+        l'horodatage des émissions, la taille des messages, et la puissance reçue — donc une
+        <strong>localisation approximative</strong> par triangulation. Personne ne saura que votre
+        cave est à 14 °C, mais quelqu'un pourra savoir qu'un appareil donné a émis, à tel moment,
+        depuis à peu près tel endroit.
+      </p>
+
+      <div class="callout callout-danger">
+        <strong>Les trois cas où il n'y a réellement aucune protection</strong> — et ce sont
+        précisément les configurations d'un débutant :
+        <ol>
+          <li>
+            <strong>Le LoRa point-à-point maison.</strong> Un Heltec qui envoie
+            <code>"temp=21.5"</code> en brut, sans LoRaWAN : c'est en clair, lisible par tout le
+            monde, à 10 km.
+          </li>
+          <li>
+            <strong>Meshtastic sur le canal par défaut.</strong> La clé du canal public est publique
+            et documentée. Créez un canal privé.
+          </li>
+          <li>
+            <strong>L'ABP avec compteurs remis à zéro.</strong> La faille historique de LoRaWAN.
+            Utilisez toujours <strong>OTAA</strong>, jamais ABP.
+          </li>
+        </ol>
+      </div>
+
+      <p>
+        <strong>Sur TTN Community, c'est TTN qui détient votre <code>AppSKey</code></strong> — donc
+        TTN peut lire vos données en clair. Ce n'est pas une faille, c'est le contrat du service
+        gratuit. Si ça vous dérange, la réponse est ChirpStack auto-hébergé (§11).
+      </p>
+      <p>
+        Enfin, <strong>rien ne protège du brouillage.</strong> Si votre usage est une alarme, ne
+        comptez jamais sur l'absence de message comme preuve que tout va bien : surveillez l'absence
+        de <em>heartbeat</em> et traitez-la comme une alerte.
+      </p>
+    </section>
+
+    <!-- ── 3 ── -->
+    <section id="materiel">
+      <h2>3. Choisir son matériel</h2>
+
+      <h3>Le capteur : LHT52 ou LHT65N&nbsp;?</h3>
+      <p>Les deux sont des Dragino, la marque de référence pour débuter. Ils ne jouent pas dans la même catégorie.</p>
+
+      <table class="compare">
+        <thead>
+          <tr><th></th><th>Dragino LHT52</th><th>Dragino LHT65N</th></tr>
+        </thead>
+        <tbody>
+          <tr><th>Taille</th><td>58 × 58 × 20 mm</td><td>135 × 70 × 30 mm, 105 g</td></tr>
+          <tr><th>Pile</th><td>2 × AAA alcalines</td><td>Li-SOCl₂ 2400 mAh, jusqu'à 10 ans</td></tr>
+          <tr><th>Étanchéité</th><td>IP52 — <strong>intérieur uniquement</strong></td><td>prévu pour l'extérieur</td></tr>
+          <tr><th>Sonde externe</th><td>une sonde temp. en option</td><td><strong>écosystème complet</strong></td></tr>
+          <tr><th>Prix indicatif</th><td>~25–35 €</td><td>~40–50 €</td></tr>
+        </tbody>
+      </table>
+
+      <p>
+        <strong>La pile est le vrai sujet technique.</strong> Le Li-SOCl₂ du LHT65N tient une tension
+        plate jusqu'à épuisement et fonctionne jusqu'à −40 °C. Une pile alcaline AAA s'effondre au
+        froid et encaisse mal les pics de courant d'une émission LoRa. C'est <em>pour cela</em> que le
+        LHT52 est un capteur d'intérieur, pas seulement parce que son boîtier est IP52.
+      </p>
+
+      <div class="callout callout-warn">
+        Les « 10 ans » sont annoncés à intervalle d'émission très long. Émettez toutes les 5 minutes
+        en SF12 et vous tiendrez des mois, pas des années.
+      </div>
+
+      <p>
+        <strong>Le port externe du LHT65N est sa vraie raison d'être.</strong> Ce n'est pas un
+        thermomètre, c'est une <em>plateforme</em> : sonde DS18B20 déportée (E1/E3), luminosité (E5),
+        et surtout <strong>E2</strong> — un câble 5 fils pour interruption, ADC et
+        <strong>comptage d'impulsions</strong>. Contact reed, compteur d'eau, sonde analogique.
+      </p>
+
+      <div class="callout callout-key">
+        <strong>Verdict.</strong> Mesurer une température, ou disposer d'une plateforme pour
+        bricoler&nbsp;?
+        <ul>
+          <li><strong>LHT52</strong> — mesurer l'ambiance d'une pièce, apprendre. Moins cher, discret, piles trouvables en supermarché. <strong>C'est le bon premier achat.</strong></li>
+          <li><strong>LHT65N</strong> — si vous savez déjà que vous voudrez mesurer dehors, au froid, déporter une sonde, ou compter des impulsions.</li>
+        </ul>
+        Et si l'envie de bricoler vient ensuite, un <strong>Heltec V3 à 20 €</strong> vous donnera
+        bien plus de liberté qu'un LHT65N, pour moins cher.
+      </div>
+
+      <h3>La passerelle : en avez-vous seulement besoin&nbsp;?</h3>
+      <p>
+        <strong>Vérifiez d'abord la couverture</strong> sur
+        <a href="https://ttnmapper.org" target="_blank" rel="noopener">ttnmapper.org</a>. Si vous
+        êtes couvert, vous n'avez <strong>rien</strong> à acheter. Sinon, une passerelle intérieure
+        suffit — et une seule chez vous peut couvrir tout un quartier : Dragino LPS8v2 (~100–130 €),
+        RAK7268 (~130–150 €), Mikrotik wAP LR8 (~120 €).
+      </p>
+      <div class="callout callout-danger">
+        <strong>Fuyez les « single channel gateways » à 15 €.</strong> Elles ne sont pas conformes à
+        LoRaWAN et vous passerez vos soirées à débugger des fantômes.
+      </div>
+
+      <h3>Le DIY</h3>
+      <p>
+        <strong>Heltec WiFi LoRa 32 V3</strong> (~20 €, ESP32-S3 + SX1262 + OLED) pour apprendre.
+        <strong>RAK4631</strong> (nRF52840) ou <strong>LoRa-E5</strong> (STM32WL) pour du vrai basse
+        conso. Le piège : un ESP32 consomme trop pour tenir des années sur pile — excellent pour
+        apprendre, inadapté à un capteur autonome. Côté logiciel, <strong>RadioLib</strong> est la
+        bibliothèque de référence.
+      </p>
+    </section>
+
+    <!-- ── 4 ── -->
+    <section id="achat">
+      <h2>4. Checklist d'achat</h2>
+      <ul class="checklist">
+        <li>
+          <strong>Fréquence : EU868.</strong> Un module 915 MHz (version américaine, souvent moins
+          chère) est <strong>illégal en France</strong> et ne joindra jamais aucune passerelle.
+          <em>C'est l'erreur n°1.</em>
+        </li>
+        <li>
+          <strong>Ne jamais alimenter un module LoRa sans antenne connectée</strong> — vous grillez
+          l'étage de puissance en quelques secondes.
+        </li>
+        <li>Pas de « single channel gateway ».</li>
+        <li>Vérifier la couverture TTN <strong>avant</strong> d'acheter une passerelle.</li>
+        <li>Garder l'<strong>autocollant dans la boîte</strong> : il porte vos clés.</li>
+      </ul>
+    </section>
+
+    <!-- ── 5 ── -->
+    <section id="ttn">
+      <h2>5. Enregistrer le capteur sur TTN</h2>
+
+      <div class="callout callout-key">
+        <strong>Vous ne créez pas les clés — vous les recopiez.</strong> Un capteur LoRaWAN
+        commercial arrive <strong>déjà provisionné en usine</strong>. Ses identifiants sont imprimés
+        sur un autocollant, dans la boîte. Le travail consiste à copier les clés
+        <strong>du capteur vers le serveur réseau</strong>, jamais l'inverse.
+      </div>
+
+      <table>
+        <thead><tr><th>Identifiant</th><th>Rôle</th><th>Secret&nbsp;?</th></tr></thead>
+        <tbody>
+          <tr><td><code>DevEUI</code></td><td>64 bits — l'identité unique du capteur</td><td>non</td></tr>
+          <tr><td><code>JoinEUI</code></td><td>64 bits — désigne l'application / serveur de join</td><td>non</td></tr>
+          <tr><td><code>AppKey</code></td><td>128 bits — <strong>la</strong> clé racine</td><td><strong>oui</strong></td></tr>
+        </tbody>
+      </table>
+
+      <h3>Ce qui se passe au premier allumage (OTAA)</h3>
+      <p>
+        Le capteur diffuse une <em>JoinRequest</em> signée avec l'AppKey. Le serveur reconnaît le
+        DevEUI, retrouve l'AppKey que vous y avez saisie, vérifie la signature, et répond une
+        <em>JoinAccept</em>. À partir de là, <strong>les deux côtés dérivent tout seuls les clés de
+        session</strong> (<code>NwkSKey</code>, <code>AppSKey</code>) — personne ne les saisit jamais,
+        et elles sont régénérées à chaque join. C'est pour ça qu'OTAA est sûr et qu'ABP ne l'est pas.
+      </p>
+
+      <h3>La procédure</h3>
+      <ol class="steps">
+        <li>Créez un compte sur <a href="https://console.cloud.thethings.network" target="_blank" rel="noopener">The Things Stack Community</a> (gratuit), cluster <strong>Europe 1</strong>.</li>
+        <li><strong>Create an application</strong>.</li>
+        <li>
+          <strong>Register end device</strong> → <strong>« From the LoRaWAN Device Repository »</strong>
+          → marque <strong>Dragino</strong>, modèle <strong>LHT52</strong>, profil
+          <strong>EU_863_870</strong>.
+          <div class="callout callout-warn inline">
+            Ne sautez pas cette étape au profit d'une saisie manuelle : le Device Repository configure
+            le profil radio <strong>et installe automatiquement le décodeur de payload</strong>.
+            C'est deux heures de gagnées.
+          </div>
+        </li>
+        <li><strong>Frequency plan</strong> : <code>Europe 863-870 MHz (SF9 for RX2 — recommended)</code>.</li>
+        <li>Recopiez <strong>JoinEUI, DevEUI et AppKey</strong> depuis l'autocollant — ou scannez le QR code, qui remplit tout. Les clés se saisissent en <strong>MSB</strong>.</li>
+        <li><strong>Mettez les piles.</strong> La JoinRequest apparaît dans <em>Live Data</em> en quelques secondes.</li>
+      </ol>
+    </section>
+
+    <!-- ── 6 ── -->
+    <section id="formatter">
+      <h2>6. Le payload formatter</h2>
+      <p>
+        Un capteur LoRaWAN n'envoie pas du JSON. Il envoie <strong>une poignée d'octets
+        binaires</strong>, compressés à l'extrême. Sans décodeur, TTN vous montre du base64 illisible,
+        <code>decoded_payload</code> est absent, et <strong>cette app enregistre une mesure
+        vide</strong>. C'est le symptôme n°1 des débuts.
+      </p>
+      <pre class="chain">0B 45 01 E4 03 12 …   →   &#123; "TempC_SHT": 21.5, "Hum_SHT": 48.2, "BatV": 3.6 &#125;</pre>
+      <p>
+        <strong>Vous n'avez pas à l'écrire</strong> : si vous avez enregistré le device via le
+        <em>Device Repository</em>, il est déjà installé.
+      </p>
+      <div class="callout callout-warn">
+        <strong>Les noms de champs dépendent du décodeur et du modèle.</strong> Ne les devinez pas :
+        regardez le premier uplink dans <em>Live Data</em> et utilisez les noms que vous y lisez. Ce
+        sont eux qui arriveront dans vos mesures, et donc eux que vous emploierez dans vos formules.
+      </div>
+    </section>
+
+    <!-- ── 7 ── -->
+    <section id="brancher">
+      <h2>7. Brancher le capteur sur l'app</h2>
+
+      <ol class="steps">
+        <li>
+          <strong>Créez le capteur ici</strong> (menu <em>Admin</em>), protocole
+          <em>The Things Network (TTN v3)</em>. L'app génère une <code>api_key</code> et affiche
+          l'URL d'ingestion — vous les retrouvez sur la page <em>Connexion</em> du capteur.
+        </li>
+        <li>
+          <strong>Créez le webhook côté TTN</strong> :
+          <em>Integrations → Webhooks → Add webhook → Custom webhook</em>.
+        </li>
+      </ol>
+
+      <table>
+        <thead><tr><th>Champ</th><th>Valeur</th></tr></thead>
+        <tbody>
+          <tr><td>Webhook format</td><td><strong>JSON</strong></td></tr>
+          <tr><td>Base URL</td><td>l'URL affichée sur la page <em>Connexion</em> du capteur</td></tr>
+          <tr><td>Additional headers</td><td><code>Authorization</code> : <code>Bearer &lt;api_key&gt;</code></td></tr>
+          <tr><td>Enabled messages</td><td><strong>Uplink message</strong> uniquement</td></tr>
+        </tbody>
+      </table>
+
+      <p>Laissez le champ <em>path</em> de l'uplink <strong>vide</strong> : TTN posterait sinon sur un sous-chemin inexistant.</p>
+
+      <div class="callout callout-key">
+        <strong>Aucun code à écrire.</strong> Le backend reconnaît nativement le format TTN (clé
+        <code>uplink_message</code>) et ChirpStack v4 (<code>deviceInfo</code>), et en extrait
+        l'horodatage et les données. Aucun middleware à intercaler.
+      </div>
+
+      <p>
+        <strong>Vérifier</strong> : côté TTN, <em>Live Data</em> doit montrer l'uplink et la ligne du
+        webhook en succès (200/201). Côté app, la mesure apparaît dans les données du capteur. Chez
+        Dragino, un appui sur le bouton force une émission sans attendre.
+      </p>
+    </section>
+
+    <!-- ── 8 ── -->
+    <section id="mesures">
+      <h2>8. Grandeurs calculées</h2>
+      <p>
+        Une grandeur calculée est une formule Python évaluée sur chaque mesure, où <code>row</code>
+        est le dictionnaire des données reçues.
+      </p>
+      <pre class="code">row['TempC_SHT'] * 9 / 5 + 32                      # °C → °F
+row['TempC_SHT'] - (100 - row['Hum_SHT']) / 5      # point de rosée (approximation)
+(row['BatV'] - 2.5) / (3.6 - 2.5) * 100            # niveau de pile en %</pre>
+      <p>
+        L'évaluation est sandboxée et renvoie <code>None</code> en cas d'erreur : une formule fausse
+        donne une courbe vide, jamais une exception. <strong>Utilisez les noms de champs réellement
+        reçus</strong> — pas ceux de cet exemple, qui dépendent de votre décodeur.
+      </p>
+    </section>
+
+    <!-- ── 9 ── -->
+    <section id="cles">
+      <h2>9. Changer les clés (commandes AT)</h2>
+      <p>
+        <strong>Vous n'en avez très probablement pas besoin.</strong> Les clés d'usine sont uniques
+        par appareil et parfaitement sûres. Vous ne les changerez que le jour où vous auto-hébergerez
+        ChirpStack.
+      </p>
+      <table>
+        <tbody>
+          <tr><th>Matériel</th><td>adaptateur <strong>AS-02</strong> (USB-C) + un adaptateur USB-TTL</td></tr>
+          <tr><th>Débit</th><td><strong>115200</strong> bauds, 8N1</td></tr>
+          <tr><th>Mot de passe AT</th><td><code>123456</code> par défaut — les commandes sont désactivées sans lui</td></tr>
+          <tr><th>Commandes</th><td><code>AT+DEUI</code>, <code>AT+APPEUI</code>, <code>AT+APPKEY</code></td></tr>
+        </tbody>
+      </table>
+      <div class="callout callout-danger">
+        Une AppKey mal recopiée donne un capteur qui <strong>ne joint plus jamais rien, sans le
+        moindre message d'erreur</strong>. Avec l'achat d'un module 915 MHz, c'est le grand classique
+        du débutant.
+      </div>
+    </section>
+
+    <!-- ── 10 ── -->
+    <section id="depannage">
+      <h2>10. Dépannage</h2>
+      <table class="trouble">
+        <thead><tr><th>Symptôme</th><th>Cause la plus probable</th></tr></thead>
+        <tbody>
+          <tr><td>Aucune JoinRequest dans TTN</td><td><strong>Pas de couverture passerelle.</strong> Cherchez ici en premier, pas dans les clés — le capteur réémet en boucle sans se plaindre.</td></tr>
+          <tr><td>Aucune JoinRequest, et vous êtes couvert</td><td>Module <strong>915 MHz</strong> au lieu de 868, ou plan de fréquences erroné.</td></tr>
+          <tr><td>JoinRequest visible, jamais de JoinAccept</td><td><strong>AppKey ou DevEUI mal recopiés</strong> (souvent un problème d'ordre MSB/LSB).</td></tr>
+          <tr><td>Uplinks reçus, payload en base64 illisible</td><td><strong>Payload formatter absent.</strong></td></tr>
+          <tr><td>Mesures qui arrivent <strong>vides</strong> dans l'app</td><td>Même cause : pas de <code>decoded_payload</code>, donc rien à extraire.</td></tr>
+          <tr><td>Webhook en erreur <code>403</code></td><td><code>api_key</code> fausse, ou header mal formé (il faut <code>Bearer &lt;clé&gt;</code>).</td></tr>
+          <tr><td>Webhook en erreur <code>404</code></td><td>URL d'ingestion fausse. Reprenez-la sur la page <em>Connexion</em> du capteur.</td></tr>
+          <tr><td>Le capteur émet, puis se tait</td><td><strong>Duty cycle / Fair Use Policy.</strong> Vous émettez trop souvent.</td></tr>
+          <tr><td>Courbe d'une grandeur calculée vide</td><td>Noms de champs faux dans la formule.</td></tr>
+          <tr><td>Pile vide en quelques mois</td><td>Intervalle d'émission trop court, ou SF12 forcé. Laissez faire l'<strong>ADR</strong>.</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <!-- ── 11 ── -->
+    <section id="chirpstack">
+      <h2>11. Aller plus loin : ChirpStack auto-hébergé</h2>
+      <p>
+        TTN Community est parfait pour démarrer, mais <strong>TTN détient vos clés de session</strong>
+        et peut donc lire vos données. ChirpStack, lui, s'auto-héberge.
+      </p>
+      <ul>
+        <li><strong>Vous redevenez le seul détenteur des clés.</strong> Le chiffrement AES-128 devient réellement de bout en bout, du capteur jusqu'à cette app.</li>
+        <li>Plus de Fair Use Policy (le duty cycle légal de 1 %, lui, reste).</li>
+        <li>Il faut une passerelle à vous, pointée vers votre serveur.</li>
+      </ul>
+      <p>
+        Côté app, <strong>rien à changer</strong> : le protocole <code>chirpstack</code> est déjà
+        géré et le format v4 est normalisé nativement.
+      </p>
+    </section>
+
+    <footer class="guide-footer">
+      <p>
+        Version longue et sources dans <code>docs/GUIDE-LORA.md</code> du dépôt.
+      </p>
+    </footer>
+
+  </article>
+</div>

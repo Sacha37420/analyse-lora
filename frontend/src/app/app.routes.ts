@@ -34,6 +34,10 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/admin/sensor-connection').then(m => m.SensorConnectionComponent),
   },
   {
+    path: 'aide',
+    loadComponent: () => import('./pages/aide/aide').then(m => m.AideComponent),
+  },
+  {
     path: 'profile',
     loadComponent: () => import('./pages/profile/profile').then(m => m.ProfileComponent),
   },

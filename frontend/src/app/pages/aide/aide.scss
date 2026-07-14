@@ -1,0 +1,233 @@
+.aide-layout {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 2.5rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem 4rem;
+  align-items: start;
+}
+
+/* ── Sommaire ─────────────────────────────────────────────────────────────── */
+
+.toc {
+  position: sticky;
+  top: 1.5rem;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 1.25rem;
+
+  h2 {
+    font-size: .75rem;
+    text-transform: uppercase;
+    letter-spacing: .06em;
+    color: var(--text-muted);
+    margin: 0 0 .75rem;
+  }
+
+  ol {
+    list-style: none;
+    counter-reset: toc;
+    margin: 0;
+    padding: 0;
+  }
+
+  li {
+    counter-increment: toc;
+    margin-bottom: .1rem;
+  }
+
+  a {
+    display: flex;
+    gap: .5rem;
+    padding: .4rem .5rem;
+    border-radius: 6px;
+    font-size: .875rem;
+    line-height: 1.35;
+    color: var(--text);
+    text-decoration: none;
+    cursor: pointer;
+
+    &::before {
+      content: counter(toc) ".";
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    &:hover {
+      background: var(--bg);
+      color: var(--primary-dark);
+    }
+  }
+}
+
+/* ── Contenu ──────────────────────────────────────────────────────────────── */
+
+.guide {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 2.5rem 3rem 3rem;
+  color: var(--text);
+  line-height: 1.65;
+  min-width: 0; // sans quoi les <pre> larges débordent la grille
+
+  h1 {
+    margin: 0 0 .5rem;
+    font-size: 2rem;
+  }
+
+  h2 {
+    margin: 3rem 0 1rem;
+    padding-bottom: .5rem;
+    border-bottom: 2px solid var(--border);
+    font-size: 1.4rem;
+    scroll-margin-top: 1.5rem;
+  }
+
+  h3 {
+    margin: 2rem 0 .6rem;
+    font-size: 1.05rem;
+    color: var(--primary-dark);
+  }
+
+  section { scroll-margin-top: 1.5rem; }
+
+  p  { margin: .75rem 0; }
+  ul, ol { margin: .75rem 0; padding-left: 1.4rem; }
+  li { margin: .35rem 0; }
+
+  a {
+    color: var(--primary-dark);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+
+  code {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: .1em .35em;
+    font-size: .875em;
+  }
+}
+
+.guide-header .lead {
+  color: var(--text-muted);
+  font-size: 1.05rem;
+  margin-bottom: 0;
+}
+
+.guide-footer {
+  margin-top: 3rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: .875rem;
+}
+
+/* ── Blocs préformatés ────────────────────────────────────────────────────── */
+
+pre.chain,
+pre.code {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin: 1rem 0;
+  font-size: .8rem;
+  line-height: 1.5;
+  overflow-x: auto; // le bloc défile, la page non
+}
+
+/* ── Tableaux ─────────────────────────────────────────────────────────────── */
+
+.guide table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1rem 0;
+  font-size: .9rem;
+
+  th, td {
+    border: 1px solid var(--border);
+    padding: .6rem .75rem;
+    text-align: left;
+    vertical-align: top;
+  }
+
+  thead th {
+    background: var(--bg);
+    font-weight: 600;
+  }
+
+  tbody th {
+    background: var(--bg);
+    font-weight: 600;
+    white-space: nowrap;
+  }
+}
+
+.compare td:nth-child(2) { background: rgba(34, 197, 94, .06); }
+.trouble td:first-child  { width: 38%; }
+
+/* ── Encarts ──────────────────────────────────────────────────────────────── */
+
+.callout {
+  margin: 1.25rem 0;
+  padding: .9rem 1.1rem;
+  border-left: 4px solid;
+  border-radius: 0 var(--radius) var(--radius) 0;
+  font-size: .925rem;
+
+  > :first-child { margin-top: 0; }
+  > :last-child  { margin-bottom: 0; }
+
+  &.inline { margin: .6rem 0 .2rem; font-size: .875rem; }
+}
+
+.callout-key    { border-color: var(--primary); background: rgba(59, 130, 246, .07); }
+.callout-warn   { border-color: var(--warning); background: rgba(245, 158, 11, .09); }
+.callout-danger { border-color: var(--danger);  background: rgba(239, 68,  68, .07); }
+
+/* ── Listes spécifiques ───────────────────────────────────────────────────── */
+
+.checklist {
+  list-style: none;
+  padding-left: 0;
+
+  li {
+    position: relative;
+    padding-left: 1.6rem;
+    margin: .6rem 0;
+
+    &::before {
+      content: "☐";
+      position: absolute;
+      left: 0;
+      color: var(--text-muted);
+      font-size: 1.1rem;
+      line-height: 1.4;
+    }
+  }
+}
+
+.steps li { margin: .6rem 0; }
+
+/* ── Responsive ───────────────────────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .aide-layout {
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+    padding: 1rem;
+  }
+
+  .toc { position: static; }
+
+  .guide { padding: 1.5rem 1.25rem 2rem; }
+
+  .trouble td:first-child { width: auto; }
+}
