@@ -1,12 +1,11 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
-import { NavbarComponent } from '../../shared/navbar/navbar';
 import { LoraService } from '../../core/lora.service';
 import { KeycloakService } from '../../core/keycloak.service';
 
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [NavbarComponent],
+  imports: [],
   templateUrl: './profile.html',
   styleUrl: './profile.scss',
 })

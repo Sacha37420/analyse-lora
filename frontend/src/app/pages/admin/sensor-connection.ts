@@ -1,13 +1,12 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { NavbarComponent } from '../../shared/navbar/navbar';
 import { LoraService, ConnectionInfo, ConnectionMethod } from '../../core/lora.service';
 
 @Component({
   selector: 'app-sensor-connection',
   standalone: true,
-  imports: [RouterLink, FormsModule, NavbarComponent],
+  imports: [RouterLink, FormsModule],
   templateUrl: './sensor-connection.html',
   styleUrl: './sensor-connection.scss',
 })

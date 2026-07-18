@@ -1,14 +1,13 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
-import { NavbarComponent } from '../../shared/navbar/navbar';
 import { LoraService, Sensor } from '../../core/lora.service';
 import { KeycloakService } from '../../core/keycloak.service';
 
 @Component({
   selector: 'app-sensor-list',
   standalone: true,
-  imports: [RouterLink, DatePipe, NavbarComponent],
+  imports: [RouterLink, DatePipe],
   templateUrl: './sensor-list.html',
   styleUrl: './sensor-list.scss',
 })

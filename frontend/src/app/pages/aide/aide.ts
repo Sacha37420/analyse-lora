@@ -1,5 +1,4 @@
 import { Component } from '@angular/core';
-import { NavbarComponent } from '../../shared/navbar/navbar';
 
 interface Section {
   id:    string;
@@ -9,7 +8,7 @@ interface Section {
 @Component({
   selector: 'app-aide',
   standalone: true,
-  imports: [NavbarComponent],
+  imports: [],
   templateUrl: './aide.html',
   styleUrl: './aide.scss',
 })

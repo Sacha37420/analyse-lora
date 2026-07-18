@@ -4,7 +4,6 @@ import {
 } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { NavbarComponent } from '../../shared/navbar/navbar';
 import { LoraService, ComputedMeasure, MeasurePoint, Sensor } from '../../core/lora.service';
 import { Chart, ChartData, ChartOptions, registerables } from 'chart.js';
 
@@ -13,7 +12,7 @@ Chart.register(...registerables);
 @Component({
   selector: 'app-measure-view',
   standalone: true,
-  imports: [RouterLink, FormsModule, NavbarComponent],
+  imports: [RouterLink, FormsModule],
   templateUrl: './measure-view.html',
   styleUrl: './measure-view.scss',
 })
@@ -85,6 +84,11 @@ export class MeasureViewComponent implements OnInit, OnDestroy {
     const existing = this.charts.get(measure.id);
     if (existing) existing.destroy();
 
+    // Couleurs d'axe lues sur les tokens Foyer courants (thème actif au moment du tracé).
+    const rootStyle = getComputedStyle(document.documentElement);
+    const gridColor = rootStyle.getPropertyValue('--border').trim();
+    const axisTextColor = rootStyle.getPropertyValue('--text-muted').trim();
+
     const labels = points.map(p => new Date(p.t).toLocaleString('fr-FR', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }));
     const values = points.map(p => p.v);
 
@@ -109,11 +113,11 @@ export class MeasureViewComponent implements OnInit, OnDestroy {
         scales: {
           x: {
             ticks: { maxTicksLimit: 10, maxRotation: 0 },
-            grid: { color: '#e2e8f0' },
+            grid: { color: gridColor },
           },
           y: {
-            title: { display: !!measure.unit, text: measure.unit, color: '#64748b', font: { size: 12 } },
-            grid: { color: '#e2e8f0' },
+            title: { display: !!measure.unit, text: measure.unit, color: axisTextColor, font: { size: 12 } },
+            grid: { color: gridColor },
           },
         },
         plugins: {

@@ -65,13 +65,13 @@
   .chart-actions { display: flex; gap: 6px; }
 
   .formula-display {
-    background: #f8fafc;
+    background: var(--bg);
     border: 1px solid var(--border);
     border-radius: 6px;
     padding: 6px 12px;
     margin-bottom: 14px;
 
-    code { font-size: 13px; color: #7c3aed; }
+    code { font-size: 13px; color: var(--accent-deep); font-family: var(--font-mono); }
   }
 
   .chart-container {

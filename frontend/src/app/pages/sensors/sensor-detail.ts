@@ -2,13 +2,12 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { NavbarComponent } from '../../shared/navbar/navbar';
 import { LoraService, Sensor, SensorReading, ReadingsPage } from '../../core/lora.service';
 
 @Component({
   selector: 'app-sensor-detail',
   standalone: true,
-  imports: [RouterLink, FormsModule, NavbarComponent],
+  imports: [RouterLink, FormsModule],
   templateUrl: './sensor-detail.html',
   styleUrl: './sensor-detail.scss',
 })

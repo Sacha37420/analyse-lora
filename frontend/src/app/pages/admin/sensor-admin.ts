@@ -1,7 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
-import { NavbarComponent } from '../../shared/navbar/navbar';
 import { LoraService, Sensor, UserAccess } from '../../core/lora.service';
 
 const PROTOCOLS = [
@@ -16,7 +15,7 @@ const PROTOCOLS = [
 @Component({
   selector: 'app-sensor-admin',
   standalone: true,
-  imports: [RouterLink, FormsModule, NavbarComponent],
+  imports: [RouterLink, FormsModule],
   templateUrl: './sensor-admin.html',
   styleUrl: './sensor-admin.scss',
 })

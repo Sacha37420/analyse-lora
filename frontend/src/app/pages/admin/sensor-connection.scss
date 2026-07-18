@@ -23,7 +23,7 @@
   padding: 10px 14px;
   margin: 10px 0;
 
-  code { flex: 1; font-size: 13px; word-break: break-all; color: #7c3aed; }
+  code { flex: 1; font-size: 13px; word-break: break-all; color: var(--accent-deep); font-family: var(--font-mono); }
 }
 
 .method-tabs {
@@ -44,7 +44,7 @@
 
   &.active {
     background: var(--primary);
-    color: white;
+    color: var(--accent-on);
     border-color: var(--primary);
   }
 }
@@ -73,8 +73,9 @@
     margin-bottom: 8px;
     code {
       display: block;
-      background: #1e293b;
-      color: #e2e8f0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
       padding: 8px 12px;
       border-radius: 6px;
       font-size: 13px;
