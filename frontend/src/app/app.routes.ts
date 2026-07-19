@@ -37,9 +37,5 @@ export const routes: Routes = [
     path: 'aide',
     loadComponent: () => import('./pages/aide/aide').then(m => m.AideComponent),
   },
-  {
-    path: 'profile',
-    loadComponent: () => import('./pages/profile/profile').then(m => m.ProfileComponent),
-  },
   { path: '**', redirectTo: '' },
 ];

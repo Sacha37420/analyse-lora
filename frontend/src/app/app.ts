@@ -36,7 +36,6 @@ export class App {
     { path: '/sensors',      label: 'Capteurs',        abbr: 'Ca' },
     { path: '/admin/sensors', label: 'Admin',          abbr: 'Ad', devOnly: true },
     { path: '/aide',         label: 'Aide',             abbr: 'Ai' },
-    { path: '/profile',      label: 'Profil',           abbr: 'Pr' },
   ];
 
   get navItems(): NavItem[] {
