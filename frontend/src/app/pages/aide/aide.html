@@ -129,7 +129,7 @@
       <p>
         <strong>Sur TTN Community, c'est TTN qui détient votre <code>AppSKey</code></strong> — donc
         TTN peut lire vos données en clair. Ce n'est pas une faille, c'est le contrat du service
-        gratuit. Si ça vous dérange, la réponse est ChirpStack auto-hébergé (§11).
+        gratuit. Si ça vous dérange, la réponse est ChirpStack auto-hébergé (§12).
       </p>
       <p>
         Enfin, <strong>rien ne protège du brouillage.</strong> Si votre usage est une alarme, ne
@@ -193,8 +193,9 @@
         <strong>Vérifiez d'abord la couverture</strong> sur
         <a href="https://ttnmapper.org" target="_blank" rel="noopener">ttnmapper.org</a>. Si vous
         êtes couvert, vous n'avez <strong>rien</strong> à acheter. Sinon, une passerelle intérieure
-        suffit — et une seule chez vous peut couvrir tout un quartier : Dragino LPS8v2 (~100–130 €),
-        RAK7268 (~130–150 €), Mikrotik wAP LR8 (~120 €).
+        suffit — et une seule chez vous peut couvrir tout un quartier : SenseCAP M2 (~119 €,
+        WiFi+Ethernet+PoE, TTN/ChirpStack natif), Dragino LPS8v2 (~100–130 €), RAK7268 (~130–150 €),
+        Mikrotik wAP LR8 (~120 €).
       </p>
       <div class="callout callout-danger">
         <strong>Fuyez les « single channel gateways » à 15 €.</strong> Elles ne sont pas conformes à
@@ -231,8 +232,81 @@
     </section>
 
     <!-- ── 5 ── -->
+    <section id="passerelle">
+      <h2>5. Connecter sa passerelle à TTN</h2>
+
+      <p>
+        <em>Si la couverture TTN suffisait déjà chez vous (§3), vous n'avez rien à connecter :
+        passez directement à la section suivante.</em>
+      </p>
+
+      <div class="callout callout-key">
+        <strong>La passerelle ne détient aucun secret.</strong> Contrairement au capteur, elle n'a
+        qu'un identifiant public, le <strong>Gateway EUI</strong> — rien d'équivalent à l'AppKey.
+        Elle relaie les trames radio vers TTN en IP sans jamais rien déchiffrer ni signer.
+      </div>
+
+      <h3>Deux protocoles, un seul à retenir</h3>
+      <table>
+        <thead><tr><th>Protocole</th><th>Port</th><th>Sécurité</th></tr></thead>
+        <tbody>
+          <tr><td>Packet Forwarder (historique)</td><td>1700/UDP</td><td>Aucune</td></tr>
+          <tr><td><strong>Basic Station</strong></td><td>8887/TCP (TLS)</td><td><strong>Authentifié, chiffré — à utiliser</strong></td></tr>
+        </tbody>
+      </table>
+
+      <h3>La procédure (exemple SenseCAP M2)</h3>
+
+      <div class="callout callout-warn">
+        <strong>À vérifier à réception du matériel.</strong> L'IP et les intitulés de menu
+        ci-dessous viennent de guides tiers, pas du PDF constructeur. Les valeurs de connexion TTN
+        (LNS Server URI, port, certificat), elles, sont le standard Basic Station documenté par
+        TTN — fiables quel que soit le fabricant.
+      </div>
+
+      <ol class="steps">
+        <li>
+          <strong>Enregistrez la passerelle côté TTN</strong> : <em>Gateways → Register gateway</em>
+          → Gateway EUI (étiquette du boîtier), Gateway ID à vous, frequency plan
+          <code>Europe 863-870 MHz</code>.
+        </li>
+        <li>
+          <strong>Générez une clé API dédiée</strong> : sur la page de la gateway →
+          <em>API keys → Add API key</em> → droit <strong>« Link as Gateway »</strong> uniquement.
+        </li>
+        <li>
+          <strong>Console locale de la passerelle</strong> : point d'accès WiFi de la SenseCAP M2 →
+          <code>192.168.168.1</code> dans un navigateur (ou l'appli <strong>SenseCAP Mate</strong>,
+          QR code de l'étiquette).
+        </li>
+        <li>
+          <strong><code>LoRa → LoRa Network</code></strong> :
+          <table>
+            <tbody>
+              <tr><th>Mode</th><td>Basic Station</td></tr>
+              <tr><th>LNS Server URI</th><td><code>wss://eu1.cloud.thethings.network:8887</code></td></tr>
+              <tr><th>TLS server authentication</th><td>activé</td></tr>
+              <tr><th>Certificat</th><td>Let's Encrypt ISRG Root X1</td></tr>
+              <tr><th>Authorization / API Key</th><td>la clé de l'étape 2</td></tr>
+            </tbody>
+          </table>
+        </li>
+        <li>
+          <strong>Vérifiez</strong> : la page de la gateway dans TTN doit passer à
+          <strong>« connected »</strong> en quelques secondes.
+        </li>
+      </ol>
+
+      <div class="callout callout-danger">
+        <strong>Gateway EUI ≠ DevEUI</strong>, et <strong>clé API de la passerelle ≠ AppKey du
+        capteur</strong>. Deux paires d'identifiants pour deux usages différents — les confondre
+        enregistre le mauvais identifiant au mauvais endroit, sans erreur explicite.
+      </div>
+    </section>
+
+    <!-- ── 6 ── -->
     <section id="ttn">
-      <h2>5. Enregistrer le capteur sur TTN</h2>
+      <h2>6. Enregistrer le capteur sur TTN</h2>
 
       <div class="callout callout-key">
         <strong>Vous ne créez pas les clés — vous les recopiez.</strong> Un capteur LoRaWAN
@@ -279,9 +353,9 @@
       </ol>
     </section>
 
-    <!-- ── 6 ── -->
+    <!-- ── 7 ── -->
     <section id="formatter">
-      <h2>6. Le payload formatter</h2>
+      <h2>7. Le payload formatter</h2>
       <p>
         Un capteur LoRaWAN n'envoie pas du JSON. Il envoie <strong>une poignée d'octets
         binaires</strong>, compressés à l'extrême. Sans décodeur, TTN vous montre du base64 illisible,
@@ -300,9 +374,9 @@
       </div>
     </section>
 
-    <!-- ── 7 ── -->
+    <!-- ── 8 ── -->
     <section id="brancher">
-      <h2>7. Brancher le capteur sur l'app</h2>
+      <h2>8. Brancher le capteur sur l'app</h2>
 
       <ol class="steps">
         <li>
@@ -341,9 +415,9 @@
       </p>
     </section>
 
-    <!-- ── 8 ── -->
+    <!-- ── 9 ── -->
     <section id="mesures">
-      <h2>8. Grandeurs calculées</h2>
+      <h2>9. Grandeurs calculées</h2>
       <p>
         Une grandeur calculée est une formule Python évaluée sur chaque mesure, où <code>row</code>
         est le dictionnaire des données reçues.
@@ -358,9 +432,9 @@ row['TempC_SHT'] - (100 - row['Hum_SHT']) / 5      # point de rosée (approximat
       </p>
     </section>
 
-    <!-- ── 9 ── -->
+    <!-- ── 10 ── -->
     <section id="cles">
-      <h2>9. Changer les clés (commandes AT)</h2>
+      <h2>10. Changer les clés (commandes AT)</h2>
       <p>
         <strong>Vous n'en avez très probablement pas besoin.</strong> Les clés d'usine sont uniques
         par appareil et parfaitement sûres. Vous ne les changerez que le jour où vous auto-hébergerez
@@ -381,15 +455,17 @@ row['TempC_SHT'] - (100 - row['Hum_SHT']) / 5      # point de rosée (approximat
       </div>
     </section>
 
-    <!-- ── 10 ── -->
+    <!-- ── 11 ── -->
     <section id="depannage">
-      <h2>10. Dépannage</h2>
+      <h2>11. Dépannage</h2>
       <table class="trouble">
         <thead><tr><th>Symptôme</th><th>Cause la plus probable</th></tr></thead>
         <tbody>
           <tr><td>Aucune JoinRequest dans TTN</td><td><strong>Pas de couverture passerelle.</strong> Cherchez ici en premier, pas dans les clés — le capteur réémet en boucle sans se plaindre.</td></tr>
           <tr><td>Aucune JoinRequest, et vous êtes couvert</td><td>Module <strong>915 MHz</strong> au lieu de 868, ou plan de fréquences erroné.</td></tr>
           <tr><td>JoinRequest visible, jamais de JoinAccept</td><td><strong>AppKey ou DevEUI mal recopiés</strong> (souvent un problème d'ordre MSB/LSB).</td></tr>
+          <tr><td>La gateway n'apparaît jamais « connected » dans TTN</td><td>Clé API invalide/expirée, certificat TLS non accepté, ou port <strong>8887 sortant</strong> bloqué par la box/le pare-feu.</td></tr>
+          <tr><td>Gateway « connected », mais aucune JoinRequest de vos capteurs</td><td>Pas un problème de connexion passerelle→TTN : diagnostiquez plutôt la portée ou le plan de fréquences (lignes ci-dessus).</td></tr>
           <tr><td>Uplinks reçus, payload en base64 illisible</td><td><strong>Payload formatter absent.</strong></td></tr>
           <tr><td>Mesures qui arrivent <strong>vides</strong> dans l'app</td><td>Même cause : pas de <code>decoded_payload</code>, donc rien à extraire.</td></tr>
           <tr><td>Webhook en erreur <code>403</code></td><td><code>api_key</code> fausse, ou header mal formé (il faut <code>Bearer &lt;clé&gt;</code>).</td></tr>
@@ -401,9 +477,9 @@ row['TempC_SHT'] - (100 - row['Hum_SHT']) / 5      # point de rosée (approximat
       </table>
     </section>
 
-    <!-- ── 11 ── -->
+    <!-- ── 12 ── -->
     <section id="chirpstack">
-      <h2>11. Aller plus loin : ChirpStack auto-hébergé</h2>
+      <h2>12. Aller plus loin : ChirpStack auto-hébergé</h2>
       <p>
         TTN Community est parfait pour démarrer, mais <strong>TTN détient vos clés de session</strong>
         et peut donc lire vos données. ChirpStack, lui, s'auto-héberge.
@@ -411,7 +487,11 @@ row['TempC_SHT'] - (100 - row['Hum_SHT']) / 5      # point de rosée (approximat
       <ul>
         <li><strong>Vous redevenez le seul détenteur des clés.</strong> Le chiffrement AES-128 devient réellement de bout en bout, du capteur jusqu'à cette app.</li>
         <li>Plus de Fair Use Policy (le duty cycle légal de 1 %, lui, reste).</li>
-        <li>Il faut une passerelle à vous, pointée vers votre serveur.</li>
+        <li>
+          Il faut une passerelle à vous, pointée vers votre serveur — la configuration Basic
+          Station vue en §5 se réutilise à l'identique, seule la <strong>LNS Server URI</strong>
+          change (votre <code>chirpstack-gateway-bridge</code> au lieu du cluster TTN).
+        </li>
       </ul>
       <p>
         Côté app, <strong>rien à changer</strong> : le protocole <code>chirpstack</code> est déjà

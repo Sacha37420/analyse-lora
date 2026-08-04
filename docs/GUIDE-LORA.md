@@ -13,14 +13,15 @@ Aucun prérequis en radio. Comptez **un week-end** pour aller du carton à la pr
 2. [Qui peut lire mes données ?](#2-qui-peut-lire-mes-données-)
 3. [Choisir son matériel](#3-choisir-son-matériel)
 4. [Checklist d'achat](#4-checklist-dachat)
-5. [Installation : enregistrer le capteur sur TTN](#5-installation--enregistrer-le-capteur-sur-ttn)
-6. [Le payload formatter — l'étape qu'on oublie](#6-le-payload-formatter--létape-quon-oublie)
-7. [Brancher le capteur sur analyse-lora](#7-brancher-le-capteur-sur-analyse-lora)
-8. [Créer des grandeurs calculées](#8-créer-des-grandeurs-calculées)
-9. [Changer les clés (commandes AT)](#9-changer-les-clés-commandes-at)
-10. [Dépannage](#10-dépannage)
-11. [Aller plus loin : ChirpStack auto-hébergé](#11-aller-plus-loin--chirpstack-auto-hébergé)
-12. [Sources](#12-sources)
+5. [Installation : connecter sa passerelle à TTN](#5-installation--connecter-sa-passerelle-à-ttn)
+6. [Installation : enregistrer le capteur sur TTN](#6-installation--enregistrer-le-capteur-sur-ttn)
+7. [Le payload formatter — l'étape qu'on oublie](#7-le-payload-formatter--létape-quon-oublie)
+8. [Brancher le capteur sur analyse-lora](#8-brancher-le-capteur-sur-analyse-lora)
+9. [Créer des grandeurs calculées](#9-créer-des-grandeurs-calculées)
+10. [Changer les clés (commandes AT)](#10-changer-les-clés-commandes-at)
+11. [Dépannage](#11-dépannage)
+12. [Aller plus loin : ChirpStack auto-hébergé](#12-aller-plus-loin--chirpstack-auto-hébergé)
+13. [Sources](#13-sources)
 
 ---
 
@@ -125,7 +126,7 @@ Ce sont précisément les configurations d'un débutant :
 
 Sur **TTN Community, c'est TTN qui détient votre `AppSKey`** — donc TTN peut lire vos données en
 clair. Ce n'est pas une faille, c'est le contrat du service gratuit. Si ça vous dérange, la réponse
-est ChirpStack auto-hébergé (§11).
+est ChirpStack auto-hébergé (§12).
 
 ### Et le brouillage
 
@@ -194,6 +195,7 @@ Sinon, une passerelle intérieure suffit — et une seule chez vous peut couvrir
 
 | Modèle | Prix indicatif |
 |---|---|
+| **SenseCAP M2** (Seeed) | ~119 € — WiFi + Ethernet + PoE, TTN/ChirpStack pris en charge nativement |
 | Dragino LPS8v2 | ~100–130 € |
 | RAK7268 | ~130–150 € |
 | Mikrotik wAP LR8 | ~120 € |
@@ -236,11 +238,87 @@ Côté logiciel, **RadioLib** est aujourd'hui la bibliothèque de référence et
       puissance en quelques secondes.
 - [ ] Pas de « single channel gateway ».
 - [ ] Vérifier la couverture TTN **avant** d'acheter une passerelle.
-- [ ] Garder précieusement l'**autocollant dans la boîte** : il porte vos clés (§5).
+- [ ] Garder précieusement l'**autocollant dans la boîte** : il porte vos clés (§6).
 
 ---
 
-## 5. Installation : enregistrer le capteur sur TTN
+## 5. Installation : connecter sa passerelle à TTN
+
+*(Si la couverture TTN suffisait déjà chez vous — §3 —, vous n'avez rien acheté ni à connecter :
+passez directement à la section suivante.)*
+
+### Le principe : la passerelle ne détient aucun secret
+
+Contrairement au capteur (§6), **la passerelle ne contient aucune clé cryptographique**. Elle n'a
+qu'un seul identifiant public, le **Gateway EUI** (imprimé sur son étiquette, comme le DevEUI d'un
+capteur) — rien d'équivalent à l'AppKey. Son rôle se limite à faire transiter les trames radio
+868 MHz vers TTN en IP, sans jamais rien déchiffrer ni signer. C'est précisément ce qui permet de
+relayer sans risque les capteurs d'inconnus sur une passerelle TTN publique (§2) : elle ne peut
+techniquement rien lire de ce qu'elle transporte.
+
+### Deux protocoles de liaison passerelle → TTN, un seul à retenir
+
+| Protocole | Port | Sécurité | À utiliser ? |
+|---|---|---|---|
+| **Packet Forwarder** (Semtech UDP, historique) | 1700/UDP | Aucune — ni chiffrement ni authentification | Non, sauf compatibilité forcée avec un vieux matériel |
+| **Basic Station** (LNS, WebSocket) | 8887/TCP (TLS) | Authentifié par clé API, chiffré TLS | **Oui, toujours** |
+
+En Packet Forwarder, n'importe qui connaissant l'adresse IP de votre passerelle peut usurper son
+identité auprès de TTN. Vos mesures resteraient illisibles (chiffrement AppKey, toujours en place,
+§2), mais un tiers pourrait injecter du faux trafic sous le nom de votre passerelle. Basic Station
+est le mode recommandé par TTN depuis plusieurs années ; toute passerelle récente le propose,
+dont la SenseCAP M2.
+
+### Procédure (exemple SenseCAP M2 — transposable à toute passerelle Basic Station)
+
+> ⚠️ **À vérifier à réception du matériel.** L'IP `192.168.168.1`, le chemin de menu
+> `LoRa → LoRa Network` et le nom exact des champs (étapes 3-4) viennent de guides tiers
+> (ThinkRobotics, wikis communautaires) recoupés entre eux — pas du PDF constructeur lui-même
+> (illisible à l'extraction automatique, lien en §13). Le principe et les valeurs de connexion TTN
+> (LNS Server URI, port 8887, certificat) sont fiables : c'est le standard Basic Station documenté
+> par TTN, indépendant du fabricant. Seuls l'IP et les intitulés de menu pourraient différer selon
+> la version de firmware livrée — si c'est le cas, suivez l'appli **SenseCAP Mate** (QR code de
+> l'étiquette) qui vous guidera avec l'interface réelle de votre unité, ou le PDF officiel en §13.
+
+1. **Enregistrez d'abord la passerelle côté TTN**, avant même de la configurer physiquement :
+   console *The Things Stack Community* → **Gateways → Register gateway**.
+   - **Gateway EUI** : recopiez celui imprimé sur l'étiquette du boîtier.
+   - **Gateway ID** : un identifiant à vous (minuscules, chiffres, tirets).
+   - **Frequency plan** : `Europe 863-870 MHz (SF9 for RX2 — recommended)` — le même plan que celui
+     du capteur (§6).
+2. **Générez une clé API dédiée** : sur la page de la gateway tout juste créée →
+   **API keys → Add API key** → cochez uniquement le droit **« Link as Gateway »**, rien de plus.
+   Copiez la clé immédiatement, elle ne sera plus jamais réaffichée en clair.
+3. **Accédez à la console locale de la passerelle** : la SenseCAP M2 démarre en point d'accès WiFi —
+   connectez-vous à son réseau puis ouvrez `192.168.168.1` dans un navigateur (ou utilisez l'appli
+   mobile **SenseCAP Mate**, qui fait la même chose via le QR code de l'étiquette). Configurez
+   d'abord sa sortie réseau : WiFi vers votre box, ou câble Ethernet.
+4. **Dans la console locale : `LoRa → LoRa Network`**, réglez :
+
+   | Champ | Valeur |
+   |---|---|
+   | Mode | **Basic Station** |
+   | LNS Server URI | `wss://eu1.cloud.thethings.network:8887` |
+   | TLS server authentication | activé |
+   | Certificat | **Let's Encrypt ISRG Root X1** (proposé par défaut dans la liste) |
+   | Authorization / API Key | la clé générée à l'étape 2 |
+
+   > 💡 `eu1` est le nom du **cluster Europe** de TTN Community — c'est celui qu'il faut en France.
+   > Ce n'est pas un plan de fréquences, juste l'adresse du serveur ; ne le confondez pas avec
+   > `Europe 863-870 MHz` de l'étape 1, qui est un réglage différent.
+
+5. **Vérifiez** : dans la console TTN, la page de la gateway doit passer à **« connected »** en
+   quelques secondes (onglet *Live Data* **de la gateway**, pas celui du capteur — les deux sont
+   distincts). Si rien ne se passe, voir §11.
+
+> ⚠️ **Gateway EUI ≠ DevEUI**, et **clé API de la passerelle ≠ AppKey du capteur** (§6). Ce sont
+> deux paires d'identifiants pour deux usages différents — authentifier une connexion réseau contre
+> chiffrer une charge utile. Les confondre enregistre le mauvais identifiant au mauvais endroit,
+> sans message d'erreur explicite.
+
+---
+
+## 6. Installation : enregistrer le capteur sur TTN
 
 ### Le principe : vous ne créez pas les clés, vous les recopiez
 
@@ -279,7 +357,7 @@ en dur, à la main, une fois pour toutes.
    **Dragino**, modèle **LHT52** (ou LHT65N), version matérielle/firmware, profil **EU_863_870**.
 
    > ⚠️ **Ne sautez pas cette étape au profit d'une saisie manuelle.** Le Device Repository configure
-   > le profil radio **et installe automatiquement le décodeur de payload** (§6). C'est deux heures
+   > le profil radio **et installe automatiquement le décodeur de payload** (§7). C'est deux heures
    > de gagnées.
 
 4. **Frequency plan** : `Europe 863-870 MHz (SF9 for RX2 — recommended)`.
@@ -293,7 +371,7 @@ en dur, à la main, une fois pour toutes.
 
 ---
 
-## 6. Le payload formatter — l'étape qu'on oublie
+## 7. Le payload formatter — l'étape qu'on oublie
 
 Un capteur LoRaWAN n'envoie pas du JSON. Il envoie **une poignée d'octets binaires**, compressés à
 l'extrême (le duty cycle, souvenez-vous).
@@ -307,17 +385,17 @@ Le **payload formatter** est un petit script JavaScript, côté TTN, qui transfo
 0B 45 01 E4 03 12 ...      →      { "TempC_SHT": 21.5, "Hum_SHT": 48.2, "BatV": 3.6 }
 ```
 
-**Vous n'avez pas à l'écrire** : si vous avez enregistré le device via le *Device Repository* (§5,
+**Vous n'avez pas à l'écrire** : si vous avez enregistré le device via le *Device Repository* (§6,
 étape 3), il est déjà installé. Sinon, récupérez-le sur le wiki Dragino et collez-le dans
 *Payload formatters → Uplink → Custom JavaScript formatter*.
 
 > ⚠️ **Les noms de champs produits dépendent du décodeur et du modèle.** Ne les devinez pas :
 > regardez le premier uplink dans *Live Data*, et utilisez les noms que vous y lisez. Ce sont eux
-> qui arriveront dans `SensorReading.data`, et donc eux que vous emploierez dans vos formules (§8).
+> qui arriveront dans `SensorReading.data`, et donc eux que vous emploierez dans vos formules (§9).
 
 ---
 
-## 7. Brancher le capteur sur analyse-lora
+## 8. Brancher le capteur sur analyse-lora
 
 ### 7.1 — Créer le capteur dans l'app
 
@@ -376,7 +454,7 @@ Une réponse `201` avec la mesure sérialisée = la chaîne est bonne.
 
 ---
 
-## 8. Créer des grandeurs calculées
+## 9. Créer des grandeurs calculées
 
 Une **grandeur calculée** est une formule Python évaluée sur chaque mesure. `row` est le dictionnaire
 des données reçues.
@@ -388,12 +466,12 @@ row['TempC_SHT'] - (100 - row['Hum_SHT']) / 5      # point de rosée (approximat
 ```
 
 L'évaluation est sandboxée et renvoie `None` en cas d'erreur : une formule fausse donne une courbe
-vide, jamais une exception. **Utilisez les noms de champs réellement reçus** (§6) — pas ceux de cet
+vide, jamais une exception. **Utilisez les noms de champs réellement reçus** (§7) — pas ceux de cet
 exemple, qui dépendent de votre décodeur.
 
 ---
 
-## 9. Changer les clés (commandes AT)
+## 10. Changer les clés (commandes AT)
 
 **Vous n'en avez très probablement pas besoin.** Les clés d'usine sont uniques par appareil et
 parfaitement sûres. Vous ne les changerez que le jour où vous auto-hébergerez ChirpStack et voudrez
@@ -415,24 +493,26 @@ Commandes utiles : `AT+DEUI`, `AT+APPEUI`, `AT+APPKEY`.
 
 ---
 
-## 10. Dépannage
+## 11. Dépannage
 
 | Symptôme | Cause la plus probable |
 |---|---|
 | Aucune JoinRequest dans TTN | **Pas de couverture passerelle.** Cherchez ici en premier, pas dans les clés — le capteur réémet en boucle sans se plaindre. |
 | Aucune JoinRequest, et vous êtes couvert | Module **915 MHz** au lieu de 868. Ou plan de fréquences erroné. |
 | JoinRequest visible, mais jamais de JoinAccept | **AppKey ou DevEUI mal recopiés** (souvent un problème d'ordre MSB/LSB). |
-| Uplinks reçus, mais payload en base64 illisible | **Payload formatter absent** (§6). |
+| La gateway n'apparaît jamais **« connected »** dans TTN | Clé API invalide/expirée, certificat TLS non accepté, ou port **8887 sortant** bloqué par la box/le pare-feu. |
+| Gateway **« connected »**, mais aucune JoinRequest de vos capteurs | Ce n'est pas un problème de connexion passerelle→TTN : diagnostiquez côté capteur (lignes ci-dessous — portée, plan de fréquences). |
+| Uplinks reçus, mais payload en base64 illisible | **Payload formatter absent** (§7). |
 | Mesures qui arrivent **vides** dans analyse-lora | Même cause : pas de `decoded_payload`, donc rien à extraire. |
 | TTN affiche le webhook en erreur `403` | `api_key` fausse, ou header `Authorization` mal formé (il faut `Bearer <clé>`). |
 | TTN affiche le webhook en erreur `404` | URL d'ingestion fausse. Reprenez-la sur la page *Connexion* du capteur. |
 | Le capteur émet, puis se tait | **Duty cycle / Fair Use Policy.** Vous émettez trop souvent. |
-| Courbe d'une grandeur calculée vide | Noms de champs faux dans la formule (§8). Vérifiez le contenu réel d'une mesure. |
+| Courbe d'une grandeur calculée vide | Noms de champs faux dans la formule (§9). Vérifiez le contenu réel d'une mesure. |
 | Pile vide en quelques mois | Intervalle d'émission trop court, ou SF12 forcé. Laissez faire l'**ADR**. |
 
 ---
 
-## 11. Aller plus loin : ChirpStack auto-hébergé
+## 12. Aller plus loin : ChirpStack auto-hébergé
 
 TTN Community est parfait pour démarrer, mais **TTN détient vos clés de session** et peut donc lire
 vos données (§2). ChirpStack, lui, s'auto-héberge — et vous avez déjà toute l'infrastructure Docker
@@ -443,7 +523,9 @@ Ce que ça change :
 - **Vous redevenez le seul détenteur des clés.** Le chiffrement AES-128 devient réellement de bout
   en bout, du capteur jusqu'à analyse-lora.
 - Plus de Fair Use Policy (le duty cycle légal de 1 %, lui, reste).
-- Il faut une passerelle à vous, pointée vers votre serveur.
+- Il faut une passerelle à vous, pointée vers votre serveur — la configuration Basic Station vue en
+  §5 se réutilise à l'identique, seule la **LNS Server URI** change : elle pointe vers votre
+  `chirpstack-gateway-bridge` (`wss://votre-domaine:8887`) au lieu du cluster TTN.
 
 Côté app, **rien à changer** : le protocole `chirpstack` est déjà géré, et le backend normalise
 nativement le format v4 (`deviceInfo` + `object`). Le webhook se configure dans
@@ -456,7 +538,7 @@ secondes au boîtier suffit à extraire les clés.
 
 ---
 
-## 12. Sources
+## 13. Sources
 
 - [Dragino — Get Devices Keys](https://wiki.dragino.com/xwiki/bin/view/Main/Get%20Devices%20Keys/)
 - [Manuel LHT52 (PDF)](https://files.seeedstudio.com/products/SenseCAP/101990983_LHT52/LHT52_Temperature_Humidity_Sensor_UserManual_v1.0.pdf)
@@ -464,4 +546,6 @@ secondes au boîtier suffit à extraire les clés.
 - [The Things Stack — Dragino LHT52](https://www.thethingsindustries.com/docs/hardware/devices/models/dragino-lht52/)
 - [Fiche produit LHT52](https://www.dragino.com/products/temperature-humidity-sensor/item/199-lht52.html) · [Fiche produit LHT65N](https://www.dragino.com/products/temperature-humidity-sensor/item/224-lht65n.html)
 - [TTN Mapper — couverture](https://ttnmapper.org)
+- [SenseCAP M2 — Connect to The Things Network (PDF)](https://files.seeedstudio.com/products/SenseCAP/M2_Multi-Platform_Gateway/Connect%20M2%20Multi%20Platform%20Gateway%20to%20The%20Things%20Network.pdf)
+- [Fiche produit SenseCAP M2 — Gotronic](https://www.gotronic.fr/art-passerelle-lorawan-m2-114992981-38391.htm)
 - [Forum TTN — « LHT65: disappointing battery life »](https://www.thethingsnetwork.org/forum/t/lht65-disappointing-battery-life/52153)

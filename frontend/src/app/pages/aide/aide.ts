@@ -18,6 +18,7 @@ export class AideComponent {
     { id: 'confidentialite', title: 'Qui peut lire mes données ?' },
     { id: 'materiel',    title: 'Choisir son matériel' },
     { id: 'achat',       title: 'Checklist d\'achat' },
+    { id: 'passerelle',  title: 'Connecter sa passerelle à TTN' },
     { id: 'ttn',         title: 'Enregistrer le capteur sur TTN' },
     { id: 'formatter',   title: 'Le payload formatter' },
     { id: 'brancher',    title: 'Brancher le capteur sur l\'app' },
