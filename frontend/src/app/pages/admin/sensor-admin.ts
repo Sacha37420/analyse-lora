@@ -37,6 +37,7 @@ export class SensorAdminComponent implements OnInit {
   formSlug     = '';
   formDesc     = '';
   formProtocol = 'mqtt';
+  formLocation: 'interior' | 'exterior' = 'interior';
   formActive   = true;
   formError    = signal<string | null>(null);
   saving       = signal(false);
@@ -78,6 +79,7 @@ export class SensorAdminComponent implements OnInit {
     this.formSlug = '';
     this.formDesc = '';
     this.formProtocol = 'mqtt';
+    this.formLocation = 'interior';
     this.formActive = true;
     this.formError.set(null);
     this.showForm.set(true);
@@ -89,6 +91,7 @@ export class SensorAdminComponent implements OnInit {
     this.formSlug     = s.slug;
     this.formDesc     = s.description;
     this.formProtocol = s.protocol;
+    this.formLocation = s.location ?? 'interior';
     this.formActive   = s.is_active;
     this.formError.set(null);
     this.showForm.set(true);
@@ -103,6 +106,7 @@ export class SensorAdminComponent implements OnInit {
       slug: this.formSlug,
       description: this.formDesc,
       protocol: this.formProtocol,
+      location: this.formLocation,
       is_active: this.formActive,
     };
     const obs = this.editing()

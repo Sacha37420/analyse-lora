@@ -18,6 +18,35 @@ export interface Sensor {
   user_accesses?: UserAccess[];
   connection_config?: Record<string, string>;
   api_key?: string;
+  webhook?: number | null;
+  webhook_name?: string | null;
+  location?: 'interior' | 'exterior';
+  weather_api_key?: string;
+  weather_location?: string;
+}
+
+export interface WebhookSensor {
+  id: number;
+  name: string;
+  slug: string;
+  device_id: string;
+}
+
+export interface Webhook {
+  id: number;
+  name: string;
+  protocol: string;
+  protocol_display: string;
+  connection_config: Record<string, string>;
+  api_key: string;
+  is_active: boolean;
+  created_at: string;
+  updated_at: string;
+  sensor_count: number;
+  sensors: WebhookSensor[];
+  user_accesses?: UserAccess[];
+  weather_api_key?: string;
+  weather_location?: string;
 }
 
 export interface UserAccess {
@@ -58,13 +87,28 @@ export interface MeasureResult {
   points: MeasurePoint[];
 }
 
+export interface ConnectionField {
+  key: string;
+  label: string;
+  placeholder: string;
+  required: boolean;
+}
+
+export interface WebhookGuide {
+  fields: ConnectionField[];
+  sensor_field: { key: string; label: string; placeholder: string };
+  guide_steps: string[];
+}
+
 export interface ConnectionMethod {
   protocol: string;
   label: string;
   icon: string;
   description: string;
-  fields: { key: string; label: string; placeholder: string; required: boolean }[];
+  supports_webhook: boolean;
+  fields: ConnectionField[];
   guide_steps: string[];
+  webhook_guide: WebhookGuide | null;
 }
 
 export interface ConnectionInfo {
@@ -75,7 +119,53 @@ export interface ConnectionInfo {
   api_key: string;
   api_ingest_url: string;
   guide: ConnectionMethod;
+  webhook_guide: WebhookGuide | null;
+  webhook: { id: number; name: string; protocol: string } | null;
 }
+
+export type Period = 'day' | 'week' | 'month';
+
+export interface DashboardSensorBrief {
+  id: number;
+  name: string;
+  location: 'interior' | 'exterior';
+}
+
+export interface DashboardGroup {
+  type: 'webhook' | 'sensor';
+  id: number;
+  name: string;
+  sensors: DashboardSensorBrief[];
+}
+
+export interface ChartPoint { t: string; v: number }
+
+export interface ChartSeries {
+  sensor_id: number;
+  name: string;
+  location: string;
+  points: ChartPoint[];
+}
+
+export interface DashboardChartResult {
+  period: { start: string; end: string };
+  sensors: ChartSeries[];
+}
+
+export interface GaugeData {
+  sensor_id: number;
+  name: string;
+  value: number | null;
+  timestamp: string | null;
+  exterior_sensor_name: string | null;
+  exterior_value: number | null;
+  delta: number | null;
+  delta_color: 'red' | 'green' | null;
+  min: number;
+  max: number;
+  is_temperature: boolean;
+}
+
 
 @Injectable({ providedIn: 'root' })
 export class LoraService {
@@ -144,13 +234,75 @@ export class LoraService {
 
   updateConnectionConfig(
     sensorId: number,
-    data: { protocol?: string; connection_config?: Record<string, string> },
+    data: { protocol?: string; connection_config?: Record<string, string>; webhook?: number | null },
   ): Observable<unknown> {
     return this.http.put(`${this.base}/api/sensors/${sensorId}/connection/`, data);
   }
 
   getConnectionMethods(): Observable<ConnectionMethod[]> {
     return this.http.get<ConnectionMethod[]>(`${this.base}/api/connection-methods/`);
+  }
+
+  // ── Webhooks ───────────────────────────────────────────────────────────
+  getWebhooks(): Observable<Webhook[]> {
+    return this.http.get<Webhook[]>(`${this.base}/api/webhooks/`);
+  }
+
+  getWebhook(id: number): Observable<Webhook> {
+    return this.http.get<Webhook>(`${this.base}/api/webhooks/${id}/`);
+  }
+
+  createWebhook(data: { name: string; protocol: string; connection_config: Record<string, string>; is_active?: boolean }): Observable<Webhook> {
+    return this.http.post<Webhook>(`${this.base}/api/webhooks/`, data);
+  }
+
+  updateWebhook(id: number, data: Partial<Webhook>): Observable<Webhook> {
+    return this.http.put<Webhook>(`${this.base}/api/webhooks/${id}/`, data);
+  }
+
+  deleteWebhook(id: number): Observable<void> {
+    return this.http.delete<void>(`${this.base}/api/webhooks/${id}/`);
+  }
+
+  // ── Accès utilisateurs (webhook) ───────────────────────────────────────
+  getWebhookUsers(webhookId: number): Observable<UserAccess[]> {
+    return this.http.get<UserAccess[]>(`${this.base}/api/webhooks/${webhookId}/users/`);
+  }
+
+  addWebhookUser(webhookId: number, email: string): Observable<UserAccess> {
+    return this.http.post<UserAccess>(`${this.base}/api/webhooks/${webhookId}/users/`, { user_email: email });
+  }
+
+  removeWebhookUser(webhookId: number, email: string): Observable<void> {
+    return this.http.delete<void>(`${this.base}/api/webhooks/${webhookId}/users/${email}/`);
+  }
+
+  // ── Tableau de bord ────────────────────────────────────────────────────
+  getDashboardGroups(): Observable<DashboardGroup[]> {
+    return this.http.get<DashboardGroup[]>(`${this.base}/api/dashboard/groups/`);
+  }
+
+  getDashboardFields(type: string, id: number): Observable<string[]> {
+    return this.http.get<string[]>(`${this.base}/api/dashboard/groups/${type}/${id}/fields/`);
+  }
+
+  getDashboardChart(type: string, id: number, field: string, period: Period): Observable<DashboardChartResult> {
+    const params = new HttpParams().set('field', field).set('period', period);
+    return this.http.get<DashboardChartResult>(`${this.base}/api/dashboard/groups/${type}/${id}/chart/`, { params });
+  }
+
+  getDashboardGauges(type: string, id: number, field: string, period: Period): Observable<{ gauges: GaugeData[] }> {
+    const params = new HttpParams().set('field', field).set('period', period);
+    return this.http.get<{ gauges: GaugeData[] }>(`${this.base}/api/dashboard/groups/${type}/${id}/gauges/`, { params });
+  }
+
+  // ── Météo-France (config par webhook, ou par capteur autonome) ─────────
+  updateWebhookWeather(id: number, data: { weather_api_key: string; weather_location: string }): Observable<Webhook> {
+    return this.http.patch<Webhook>(`${this.base}/api/webhooks/${id}/`, data);
+  }
+
+  updateSensorWeather(id: number, data: { weather_api_key: string; weather_location: string }): Observable<Sensor> {
+    return this.http.patch<Sensor>(`${this.base}/api/sensors/${id}/`, data);
   }
 
   // ── Grandeurs calculées ────────────────────────────────────────────────

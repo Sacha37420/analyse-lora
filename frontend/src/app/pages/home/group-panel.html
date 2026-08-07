@@ -1,0 +1,58 @@
+<div class="card group-panel">
+  <div class="group-header">
+    <h2>{{ group.name }}</h2>
+    <span class="badge badge-gray">{{ group.type === 'webhook' ? 'webhook' : 'capteur autonome' }}</span>
+  </div>
+
+  @if (loading()) {
+    <p class="loading-msg">Chargement…</p>
+  } @else if (error()) {
+    <p class="error-msg">{{ error() }}</p>
+  } @else if (fields().length === 0) {
+    <p class="empty-msg">Aucune donnée pour ce groupe pour le moment.</p>
+  } @else {
+    <div class="panel-header-row">
+      <div class="controls">
+        <div class="form-group">
+          <label>Grandeur</label>
+          <select [ngModel]="selectedField()" (ngModelChange)="selectedField.set($any($event)); onFieldChange()">
+            @for (f of fields(); track f) {
+              <option [value]="f">{{ f }}</option>
+            }
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Période</label>
+          <select [ngModel]="period()" (ngModelChange)="period.set($any($event)); onPeriodChange()">
+            @for (p of periods; track p.value) {
+              <option [value]="p.value">{{ p.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      @if (gauges().length > 0) {
+        <div class="gauges-row">
+          @for (g of gauges(); track g.sensor_id) {
+            <app-gauge
+              [label]="g.name"
+              [value]="g.value"
+              [min]="g.min"
+              [max]="g.max"
+              [unit]="unit"
+              [color]="colorForSensor(g.sensor_id)"
+              [referenceValue]="g.exterior_value"
+              [referenceLabel]="g.exterior_sensor_name ?? ''"
+              [delta]="g.delta"
+              [deltaColor]="g.delta_color"
+            />
+          }
+        </div>
+      }
+    </div>
+
+    <div class="chart-area">
+      <div #plotDiv class="plot-div"></div>
+    </div>
+  }
+</div>

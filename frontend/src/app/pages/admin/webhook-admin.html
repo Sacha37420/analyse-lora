@@ -1,0 +1,187 @@
+<div class="page">
+  <div class="page-header">
+    <h1>Webhooks</h1>
+    <button class="btn btn-primary" (click)="openCreate()">+ Nouveau webhook</button>
+  </div>
+
+  <p class="hint">
+    Un webhook est un point d'ingestion HTTP partagé par plusieurs capteurs d'une même application réseau
+    (application TTN, Application ChirpStack, Flow Helium…). Configurez-le une seule fois côté réseau LoRa,
+    puis rattachez-y chacun de vos capteurs depuis leur page « Connexion » — le routage vers le bon capteur
+    se fait automatiquement via l'identifiant de device porté par chaque uplink.
+  </p>
+
+  <!-- Formulaire création / édition -->
+  @if (showForm()) {
+    <div class="form-panel card">
+      <h2>{{ editing() ? 'Modifier ' + editing()!.name : 'Nouveau webhook' }}</h2>
+
+      <div class="form-row">
+        <div class="form-group">
+          <label>Nom</label>
+          <input [(ngModel)]="formName" placeholder="Ex : sacha-webhook">
+        </div>
+        <div class="form-group">
+          <label>Protocole</label>
+          <select [(ngModel)]="formProtocol" (ngModelChange)="onProtocolChange()" [disabled]="!!editing()">
+            @for (m of webhookProtocols; track m.protocol) {
+              <option [value]="m.protocol">{{ m.label }}</option>
+            }
+          </select>
+        </div>
+      </div>
+
+      @if (activeMethod?.webhook_guide?.fields?.length) {
+        <div class="config-fields">
+          <h3>Paramètres partagés par tous les capteurs de ce webhook</h3>
+          @for (field of activeMethod!.webhook_guide!.fields; track field.key) {
+            <div class="form-group">
+              <label>
+                {{ field.label }}
+                @if (field.required) { <span class="required">*</span> }
+              </label>
+              <input
+                [value]="fieldValue(field.key)"
+                (input)="setField(field.key, $any($event.target).value)"
+                [placeholder]="field.placeholder"
+              >
+            </div>
+          }
+        </div>
+      }
+
+      <div class="form-group">
+        <label>Actif</label>
+        <select [(ngModel)]="formActive">
+          <option [ngValue]="true">Oui</option>
+          <option [ngValue]="false">Non</option>
+        </select>
+      </div>
+
+      @if (formError()) {
+        <p class="error-msg">{{ formError() }}</p>
+      }
+
+      <div class="form-actions">
+        <button class="btn btn-primary" (click)="saveForm()" [disabled]="saving()">
+          {{ saving() ? 'Enregistrement…' : 'Enregistrer' }}
+        </button>
+        <button class="btn btn-ghost" (click)="showForm.set(false)">Annuler</button>
+      </div>
+
+      <!-- Clé API + guide + capteurs rattachés (édition uniquement) -->
+      @if (editing()) {
+        <div class="webhook-detail">
+          <div class="api-key-card">
+            <h3>Clé d'ingestion</h3>
+            <p class="hint">URL à renseigner côté réseau LoRa : <code>{{ ingestUrl(editing()!) }}</code></p>
+            <div class="key-display">
+              <code>{{ editing()!.api_key }}</code>
+              <button class="btn btn-ghost btn-sm" (click)="copyToClipboard(editing()!.api_key)">Copier</button>
+            </div>
+            <p class="hint">Header à envoyer : <code>Authorization: Bearer {{ editing()!.api_key }}</code></p>
+          </div>
+
+          @if (activeMethod?.webhook_guide?.guide_steps?.length) {
+            <div class="guide-section">
+              <h3>Guide d'intégration</h3>
+              <ol class="guide-steps">
+                @for (step of activeMethod!.webhook_guide!.guide_steps; track $index) {
+                  <li><code>{{ interpolate(step, editing()!) }}</code></li>
+                }
+              </ol>
+            </div>
+          }
+
+          <div class="sensors-section">
+            <h3>Capteurs rattachés ({{ editing()!.sensor_count }})</h3>
+            @if (editing()!.sensors.length > 0) {
+              <ul class="sensor-list">
+                @for (s of editing()!.sensors; track s.id) {
+                  <li>
+                    <a [routerLink]="['/admin/sensors', s.id, 'connection']">{{ s.name }}</a>
+                    <code>{{ s.device_id || '(device_id non renseigné)' }}</code>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p class="empty-msg" style="text-align:left;padding:8px 0">
+                Aucun capteur rattaché — depuis la page « Connexion » d'un capteur en {{ activeMethod?.label }},
+                sélectionnez ce webhook.
+              </p>
+            }
+          </div>
+
+          <div class="users-section">
+            <h3>Utilisateurs ayant accès</h3>
+            <p class="hint">
+              Partager ce webhook donne accès à tous les capteurs qui y sont rattachés — y compris ceux
+              ajoutés plus tard. Les membres du groupe <code>developers</code> ont toujours accès à tout.
+            </p>
+
+            <div class="add-user">
+              <input [(ngModel)]="newEmail" placeholder="email@example.com" (keyup.enter)="addUser()">
+              <button class="btn btn-primary" (click)="addUser()">Ajouter</button>
+            </div>
+
+            @if (usersError()) {
+              <p class="error-msg">{{ usersError() }}</p>
+            }
+
+            @if (userAccesses().length > 0) {
+              <ul class="user-list">
+                @for (acc of userAccesses(); track acc.id) {
+                  <li>
+                    <span>{{ acc.user_email }}</span>
+                    <button class="btn btn-danger btn-sm" (click)="removeUser(acc.user_email)">Révoquer</button>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p class="empty-msg" style="text-align:left;padding:8px 0">Aucun accès explicite configuré.</p>
+            }
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Liste des webhooks -->
+  @if (loading()) {
+    <p class="loading-msg">Chargement…</p>
+  } @else if (webhooks().length === 0) {
+    <p class="empty-msg">Aucun webhook créé.</p>
+  } @else {
+    <div class="card">
+      <table>
+        <thead>
+          <tr>
+            <th>Nom</th>
+            <th>Protocole</th>
+            <th>État</th>
+            <th>Capteurs</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (w of webhooks(); track w.id) {
+            <tr>
+              <td class="sensor-name">{{ w.name }}</td>
+              <td><span class="badge badge-blue">{{ w.protocol_display }}</span></td>
+              <td>
+                <span class="badge" [class]="w.is_active ? 'badge-green' : 'badge-gray'">
+                  {{ w.is_active ? 'actif' : 'inactif' }}
+                </span>
+              </td>
+              <td>{{ w.sensor_count }}</td>
+              <td class="actions">
+                <button class="btn btn-ghost btn-sm" (click)="openEdit(w)">Modifier</button>
+                <button class="btn btn-danger btn-sm" (click)="deleteWebhook(w)">Supprimer</button>
+              </td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  }
+</div>

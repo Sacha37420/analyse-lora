@@ -1,0 +1,89 @@
+.page-header {
+  margin-bottom: 16px;
+  h1 { font-size: 22px; font-weight: 700; margin: 4px 0; }
+  .back-link { font-size: 13px; color: var(--text-muted); }
+}
+
+.hint {
+  font-size: 13px;
+  color: var(--text-muted);
+  max-width: 680px;
+
+  code { background: var(--bg); padding: 1px 5px; border-radius: 3px; }
+
+  &.warning { color: var(--warning); }
+}
+
+.intro { margin-bottom: 20px; }
+
+.guide-card {
+  margin-bottom: 24px;
+  h3 { font-size: 16px; font-weight: 600; margin-bottom: 12px; }
+}
+
+.guide-block {
+  margin-bottom: 16px;
+  &:last-child { margin-bottom: 0; }
+
+  h4 { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  p { font-size: 13px; color: var(--text-muted); margin-bottom: 6px; max-width: 680px; }
+}
+
+.guide-url {
+  display: block;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-mono);
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 13px;
+  word-break: break-all;
+  margin-bottom: 6px;
+}
+
+.guide-steps {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin: 0 0 6px 20px;
+  li { margin-bottom: 4px; }
+  code { background: var(--bg); padding: 1px 5px; border-radius: 3px; }
+}
+
+.scope-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.scope-card {
+  h3 { font-size: 16px; font-weight: 600; }
+}
+
+.scope-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.scope-name { font-weight: 600; font-size: 15px; }
+
+.form-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.save-ok { color: var(--success); font-size: 14px; font-weight: 500; }
+
+@media (max-width: 600px) {
+  .form-row { grid-template-columns: 1fr; }
+}

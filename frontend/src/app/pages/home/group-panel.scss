@@ -1,0 +1,62 @@
+.group-panel {
+  margin-bottom: 24px;
+}
+
+.group-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+
+  h2 { font-size: 18px; font-weight: 700; }
+}
+
+.panel-header-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px 24px;
+  margin-bottom: 16px;
+}
+
+.controls {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+
+  .form-group { margin-bottom: 0; min-width: 160px; }
+}
+
+.gauges-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 100%;
+}
+
+.chart-area {
+  width: 100%;
+
+  .plot-div { width: 100%; height: 320px; }
+}
+
+@media (max-width: 700px) {
+  /* Override local du padding hérité de .card (global, styles.scss) — ne
+     touche pas .card elle-même, donc les autres cards de l'app (tableaux,
+     formulaires admin) gardent leur padding par défaut. Ne libère de la
+     largeur que pour le graphique de ce panneau. */
+  .group-panel {
+    padding: var(--space-3);
+  }
+
+  .panel-header-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .gauges-row {
+    justify-content: center;
+  }
+}

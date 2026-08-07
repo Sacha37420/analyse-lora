@@ -19,6 +19,7 @@
     "@angular/router": "^21.2.0",
     "chart.js": "^4.5.1",
     "keycloak-js": "^22.0.5",
+    "plotly.js-basic-dist-min": "^3.7.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },
@@ -26,6 +27,7 @@
     "@angular/build": "^21.2.13",
     "@angular/cli": "^21.2.13",
     "@angular/compiler-cli": "^21.2.0",
+    "@types/plotly.js": "^3.0.12",
     "prettier": "^3.8.1",
     "typescript": "~5.9.2"
   }

@@ -49,35 +49,73 @@
         <div class="method-content">
           <p class="method-desc">{{ activeMethod.description }}</p>
 
-          <!-- Champs de configuration -->
-          @if (activeMethod.fields.length > 0) {
-            <div class="config-fields">
-              <h4>Paramètres</h4>
-              @for (field of activeMethod.fields; track field.key) {
-                <div class="form-group">
-                  <label>
-                    {{ field.label }}
-                    @if (field.required) { <span class="required">*</span> }
-                  </label>
-                  <input
-                    [value]="fieldValue(field.key)"
-                    (input)="setField(field.key, $any($event.target).value)"
-                    [placeholder]="field.placeholder"
-                  >
-                </div>
-              }
+          <!-- Rattachement à un webhook partagé -->
+          @if (activeMethod.supports_webhook) {
+            <div class="form-group webhook-select">
+              <label>Webhook associé</label>
+              <select [ngModel]="selectedWebhookId()" (ngModelChange)="selectWebhook($any($event))">
+                <option [ngValue]="null">Aucun — capteur autonome (endpoint dédié)</option>
+                @for (w of webhooksForProtocol; track w.id) {
+                  <option [ngValue]="w.id">{{ w.name }}</option>
+                }
+              </select>
+              <p class="hint">
+                TTN/ChirpStack/Helium livrent les uplinks au niveau de l'application, pas du device :
+                un seul webhook suffit pour tous les capteurs qui partagent la même application réseau.
+                <a routerLink="/admin/webhooks">Gérer les webhooks →</a>
+              </p>
             </div>
           }
 
-          <!-- Guide d'intégration -->
-          <div class="guide-section">
-            <h4>Guide d'intégration</h4>
-            <ol class="guide-steps">
-              @for (step of activeMethod.guide_steps; track $index) {
-                <li><code>{{ interpolate(step) }}</code></li>
-              }
-            </ol>
-          </div>
+          @if (selectedWebhook) {
+            <!-- Capteur rattaché à un webhook : seul l'identifiant de device reste à saisir ici -->
+            @if (activeMethod.webhook_guide; as wg) {
+              <div class="config-fields">
+                <div class="form-group">
+                  <label>{{ wg.sensor_field.label }} <span class="required">*</span></label>
+                  <input
+                    [value]="fieldValue(wg.sensor_field.key)"
+                    (input)="setField(wg.sensor_field.key, $any($event.target).value)"
+                    [placeholder]="wg.sensor_field.placeholder"
+                  >
+                </div>
+              </div>
+              <p class="hint">
+                La configuration réseau partagée (application, région, clé…) ainsi que le guide
+                d'intégration vivent sur la page du webhook « {{ selectedWebhook.name }} ».
+              </p>
+            }
+          } @else {
+            <!-- Capteur autonome : configuration complète + guide, comme avant -->
+            @if (activeMethod.fields.length > 0) {
+              <div class="config-fields">
+                <h4>Paramètres</h4>
+                @for (field of activeMethod.fields; track field.key) {
+                  <div class="form-group">
+                    <label>
+                      {{ field.label }}
+                      @if (field.required) { <span class="required">*</span> }
+                    </label>
+                    <input
+                      [value]="fieldValue(field.key)"
+                      (input)="setField(field.key, $any($event.target).value)"
+                      [placeholder]="field.placeholder"
+                    >
+                  </div>
+                }
+              </div>
+            }
+
+            <!-- Guide d'intégration -->
+            <div class="guide-section">
+              <h4>Guide d'intégration</h4>
+              <ol class="guide-steps">
+                @for (step of activeMethod.guide_steps; track $index) {
+                  <li><code>{{ interpolate(step) }}</code></li>
+                }
+              </ol>
+            </div>
+          }
         </div>
       }
 

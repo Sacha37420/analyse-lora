@@ -34,6 +34,21 @@ export const routes: Routes = [
     loadComponent: () => import('./pages/admin/sensor-connection').then(m => m.SensorConnectionComponent),
   },
   {
+    path: 'admin/webhooks',
+    canActivate: [developerGuard],
+    loadComponent: () => import('./pages/admin/webhook-admin').then(m => m.WebhookAdminComponent),
+  },
+  {
+    path: 'admin/webhooks/:id',
+    canActivate: [developerGuard],
+    loadComponent: () => import('./pages/admin/webhook-admin').then(m => m.WebhookAdminComponent),
+  },
+  {
+    path: 'admin/weather',
+    canActivate: [developerGuard],
+    loadComponent: () => import('./pages/admin/weather-settings').then(m => m.WeatherSettingsComponent),
+  },
+  {
     path: 'aide',
     loadComponent: () => import('./pages/aide/aide').then(m => m.AideComponent),
   },

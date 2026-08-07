@@ -1,0 +1,32 @@
+<div class="gauge">
+  <div class="gauge-label">{{ label }}</div>
+
+  <div class="gauge-svg-wrap">
+    <svg viewBox="0 0 200 108" class="gauge-svg">
+      <path [attr.d]="trackPath" class="gauge-track" />
+      @if (valuePath) {
+        <path [attr.d]="valuePath" class="gauge-value-arc" [style.stroke]="color" />
+      }
+      @if (referenceMarker; as ref) {
+        <line
+          [attr.x1]="ref.x1" [attr.y1]="ref.y1"
+          [attr.x2]="ref.x2" [attr.y2]="ref.y2"
+          class="gauge-reference"
+        />
+      }
+      <text x="6"   y="106" class="gauge-bound">{{ formattedMin }}</text>
+      <text x="194" y="106" class="gauge-bound" text-anchor="end">{{ formattedMax }}</text>
+    </svg>
+    <div class="gauge-value-overlay">{{ formattedValue }}</div>
+  </div>
+
+  @if (formattedDelta) {
+    <div class="gauge-delta" [class.delta-red]="deltaColor === 'red'" [class.delta-green]="deltaColor === 'green'">
+      {{ formattedDelta }}
+    </div>
+  } @else if (referenceLabel && referenceValue != null) {
+    <div class="gauge-delta gauge-delta-neutral">
+      réf. {{ referenceLabel }} : {{ referenceValue.toFixed(1) }}{{ unit }}
+    </div>
+  }
+</div>
