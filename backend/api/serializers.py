@@ -39,7 +39,7 @@ class WebhookSerializer(serializers.ModelSerializer):
         model  = Webhook
         fields = [
             'id', 'name', 'protocol', 'protocol_display', 'connection_config',
-            'api_key', 'weather_api_key', 'weather_location', 'is_active',
+            'api_key', 'weather_location', 'is_active',
             'created_at', 'updated_at', 'sensor_count', 'sensors', 'user_accesses',
         ]
         read_only_fields = ['api_key', 'created_at', 'updated_at']
@@ -61,7 +61,7 @@ class SensorSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'slug', 'description', 'protocol', 'protocol_display',
             'connection_config', 'api_key', 'webhook', 'webhook_name', 'location',
-            'weather_api_key', 'weather_location', 'is_active',
+            'weather_location', 'is_active',
             'created_at', 'updated_at', 'user_accesses', 'reading_count',
         ]
         read_only_fields = ['api_key', 'created_at', 'updated_at']
@@ -82,7 +82,7 @@ class SensorListSerializer(serializers.ModelSerializer):
         model  = Sensor
         fields = [
             'id', 'name', 'slug', 'description', 'protocol', 'protocol_display',
-            'webhook', 'webhook_name', 'location', 'weather_api_key', 'weather_location',
+            'webhook', 'webhook_name', 'location', 'weather_location',
             'is_active', 'created_at', 'reading_count', 'last_reading',
         ]
 

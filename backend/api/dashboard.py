@@ -169,16 +169,16 @@ class DashboardGaugesView(APIView):
         exterior_value, exterior_ts = (_latest_value(exterior_sensor, field) if exterior_sensor else (None, None))
 
         if is_temperature:
-            # La config Météo-France est portée par le webhook (un lieu physique
+            # La localisation météo est portée par le webhook (un lieu physique
             # par webhook) ou, pour un capteur autonome, par le capteur lui-même.
             if group_type == 'webhook':
                 webhook = get_object_or_404(Webhook, pk=group_id)
-                weather_api_key, weather_location = webhook.weather_api_key, webhook.weather_location
+                weather_location = webhook.weather_location
             else:
-                weather_api_key, weather_location = sensors[0].weather_api_key, sensors[0].weather_location
-            gauge_min, gauge_max = weather.gauge_bounds_for_temperature(weather_api_key, weather_location)
+                weather_location = sensors[0].weather_location
+            gauge_min, gauge_max = weather.gauge_bounds_for_temperature(weather_location)
         else:
-            # Pas de plage Météo-France pour une grandeur non thermique : la jauge se
+            # Pas de plage météo pour une grandeur non thermique : la jauge se
             # cadre sur les valeurs réellement observées (tous capteurs du groupe) sur
             # la période affichée, avec une marge pour ne pas coller value/bords.
             values = []

@@ -21,7 +21,6 @@ export interface Sensor {
   webhook?: number | null;
   webhook_name?: string | null;
   location?: 'interior' | 'exterior';
-  weather_api_key?: string;
   weather_location?: string;
 }
 
@@ -45,7 +44,6 @@ export interface Webhook {
   sensor_count: number;
   sensors: WebhookSensor[];
   user_accesses?: UserAccess[];
-  weather_api_key?: string;
   weather_location?: string;
 }
 
@@ -296,12 +294,12 @@ export class LoraService {
     return this.http.get<{ gauges: GaugeData[] }>(`${this.base}/api/dashboard/groups/${type}/${id}/gauges/`, { params });
   }
 
-  // ── Météo-France (config par webhook, ou par capteur autonome) ─────────
-  updateWebhookWeather(id: number, data: { weather_api_key: string; weather_location: string }): Observable<Webhook> {
+  // ── Météo (config par webhook, ou par capteur autonome) ─────────────────
+  updateWebhookWeather(id: number, data: { weather_location: string }): Observable<Webhook> {
     return this.http.patch<Webhook>(`${this.base}/api/webhooks/${id}/`, data);
   }
 
-  updateSensorWeather(id: number, data: { weather_api_key: string; weather_location: string }): Observable<Sensor> {
+  updateSensorWeather(id: number, data: { weather_location: string }): Observable<Sensor> {
     return this.http.patch<Sensor>(`${this.base}/api/sensors/${id}/`, data);
   }
 

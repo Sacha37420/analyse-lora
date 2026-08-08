@@ -8,7 +8,6 @@ interface WeatherScope {
   type: 'webhook' | 'sensor';
   id: number;
   name: string;
-  weatherApiKey: string;
   weatherLocation: string;
 }
 
@@ -41,7 +40,6 @@ export class WeatherSettingsComponent implements OnInit {
           type: 'webhook',
           id: w.id,
           name: w.name,
-          weatherApiKey: w.weather_api_key ?? '',
           weatherLocation: w.weather_location ?? '',
         }));
         const sensorScopes: WeatherScope[] = sensors
@@ -50,7 +48,6 @@ export class WeatherSettingsComponent implements OnInit {
             type: 'sensor',
             id: s.id,
             name: s.name,
-            weatherApiKey: s.weather_api_key ?? '',
             weatherLocation: s.weather_location ?? '',
           }));
         this.scopes.set([...webhookScopes, ...sensorScopes]);
@@ -65,14 +62,14 @@ export class WeatherSettingsComponent implements OnInit {
   }
 
   isConfigured(s: WeatherScope): boolean {
-    return !!s.weatherApiKey && !!s.weatherLocation;
+    return !!s.weatherLocation;
   }
 
   save(scope: WeatherScope): void {
     const key = this.scopeKey(scope);
     this.savingKey.set(key);
     this.savedKey.set(null);
-    const data = { weather_api_key: scope.weatherApiKey, weather_location: scope.weatherLocation };
+    const data = { weather_location: scope.weatherLocation };
 
     const onSuccess = (): void => { this.savingKey.set(null); this.savedKey.set(key); };
     const onError = (e: { status?: number }): void => {

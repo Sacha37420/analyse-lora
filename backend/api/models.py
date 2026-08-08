@@ -36,10 +36,9 @@ class Webhook(models.Model):
     protocol         = models.CharField(max_length=30, choices=WEBHOOK_PROTOCOL_CHOICES)
     connection_config = models.JSONField(default=dict, blank=True)
     api_key          = models.CharField(max_length=64, unique=True, blank=True)
-    # Config Météo-France propre à ce webhook — un webhook regroupe des capteurs
+    # Localisation météo propre à ce webhook — un webhook regroupe des capteurs
     # d'un même lieu physique (même application réseau), donc une seule localisation
     # a du sens ici. Sert à borner les jauges de température (voir api/weather.py).
-    weather_api_key  = models.TextField(blank=True)
     weather_location = models.CharField(max_length=200, blank=True)
     is_active        = models.BooleanField(default=True)
     created_at       = models.DateTimeField(auto_now_add=True)
@@ -88,10 +87,9 @@ class Sensor(models.Model):
     api_key          = models.CharField(max_length=64, unique=True, blank=True)
     webhook          = models.ForeignKey(Webhook, null=True, blank=True, on_delete=models.SET_NULL, related_name='sensors')
     location         = models.CharField(max_length=10, choices=LOCATION_CHOICES, default='interior')
-    # Config Météo-France propre à ce capteur — utilisée seulement quand il n'est
+    # Localisation météo propre à ce capteur — utilisée seulement quand il n'est
     # rattaché à aucun webhook (sinon c'est la config du webhook qui s'applique,
-    # voir Webhook.weather_api_key/weather_location).
-    weather_api_key  = models.TextField(blank=True)
+    # voir Webhook.weather_location).
     weather_location = models.CharField(max_length=200, blank=True)
     is_active        = models.BooleanField(default=True)
     created_at       = models.DateTimeField(auto_now_add=True)

@@ -2,43 +2,25 @@
   <div class="page-header">
     <div>
       <a routerLink="/admin/sensors" class="back-link">← Retour aux capteurs</a>
-      <h1>Météo-France</h1>
+      <h1>Météo</h1>
     </div>
   </div>
 
   <p class="hint intro">
-    Ces réglages bornent les jauges de température du tableau de bord sur le vrai min/max journalier
-    Météo-France, sans marge ajoutée — les extrêmes du jour s'affichent tels quels. La localisation se définit
-    <strong>par webhook</strong> (un webhook regroupe les capteurs d'un même lieu physique) — ou
+    Ces réglages bornent les jauges de température du tableau de bord sur le min/max <strong>prévisionnel</strong>
+    de la journée (Open-Meteo), sans marge ajoutée — les extrêmes prévus s'affichent tels quels. La localisation
+    se définit <strong>par webhook</strong> (un webhook regroupe les capteurs d'un même lieu physique) — ou
     <strong>par capteur</strong> pour un capteur autonome, hors webhook. Tant que la config est vide ou que
     l'appel échoue, une jauge retombe sur le repli fixe -5°C/+45°C.
   </p>
 
   <div class="card guide-card">
-    <h3>Comment récupérer les deux valeurs</h3>
+    <h3>Comment renseigner la localisation</h3>
     <p class="hint">
-      Branché et vérifié en conditions réelles (même identifiant testé avec succès sur <code>restauration</code>
-      et <code>analyse-lora</code>).
+      Un simple nom de ville suffit (ex : <code>Paris</code>, <code>Tours</code>). Il est géocodé
+      automatiquement via l'API Adresse (Base Adresse Nationale), puis envoyé à Open-Meteo pour la prévision
+      du jour — pas besoin de code INSEE ni de coordonnées, et aucune clé ni inscription requise.
     </p>
-    <div class="guide-block">
-      <h4>1. Localisation — nom de la ville</h4>
-      <p>
-        Un simple nom de ville suffit (ex : <code>Paris</code>, <code>Tours</code>). Il est géocodé
-        automatiquement via l'API Adresse (Base Adresse Nationale), puis rapproché de la station météo
-        ouverte la plus proche du département — pas besoin de code INSEE ni de coordonnées.
-      </p>
-    </div>
-    <div class="guide-block">
-      <h4>2. Clé — identifiant Météo-France (DPClim)</h4>
-      <p>
-        Créez un compte sur <code>portail-api.meteofrance.fr</code>, abonnez-vous gratuitement à l'API
-        « Données climatologiques » (DPClim), puis copiez l'identifiant applicatif affiché (chaîne
-        <code>client_id:client_secret</code>). C'est une valeur <strong>longue durée</strong> : l'app échange
-        elle-même cet identifiant contre un jeton d'accès de courte durée à chaque appel, en interne — rien à
-        renouveler à la main. Un même identifiant fonctionne pour plusieurs apps du lab (ex :
-        <code>restauration</code>).
-      </p>
-    </div>
   </div>
 
   @if (loading()) {
@@ -63,10 +45,6 @@
             <div class="form-group">
               <label>Localisation (ville)</label>
               <input [(ngModel)]="s.weatherLocation" placeholder="Ex : Paris">
-            </div>
-            <div class="form-group">
-              <label>Jeton Météo-France</label>
-              <input [(ngModel)]="s.weatherApiKey" type="password" placeholder="Votre jeton">
             </div>
           </div>
 
