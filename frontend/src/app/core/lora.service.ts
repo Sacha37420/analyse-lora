@@ -145,9 +145,17 @@ export interface ChartSeries {
   points: ChartPoint[];
 }
 
+/** Prévision horaire Open-Meteo pour la localisation du groupe — grandeurs thermiques seulement. */
+export interface WeatherSeries {
+  location: string;
+  points: ChartPoint[];
+}
+
 export interface DashboardChartResult {
   period: { start: string; end: string };
   sensors: ChartSeries[];
+  /** null si la grandeur n'est pas thermique, sans localisation configurée, ou météo injoignable. */
+  weather: WeatherSeries | null;
 }
 
 export interface GaugeData {

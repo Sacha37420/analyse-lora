@@ -39,8 +39,36 @@ def _period_bounds(period: str, now=None):
     return start, end
 
 
+def _local_iso(dt) -> str:
+    """
+    Horodatage en heure locale (Europe/Paris) **sans décalage** : `2026-08-14T10:00:00`.
+
+    Plotly.js n'a aucune gestion de fuseau : il parse une chaîne ISO porteuse
+    d'un décalage (`+02:00`) en instant absolu puis étiquette l'axe en UTC — les
+    heures s'affichaient donc 1 à 2 h en arrière de l'heure française. Une chaîne
+    naïve est reprise telle quelle et s'affiche exactement comme écrite. Les
+    séries capteurs et la prévision météo passent toutes deux par ici, condition
+    pour qu'elles restent alignées entre elles.
+    """
+    return dt.astimezone(PARIS).replace(tzinfo=None).isoformat()
+
+
 def _sensor_brief(s: Sensor) -> dict:
     return {'id': s.id, 'name': s.name, 'location': s.location}
+
+
+def _is_temperature(field: str) -> bool:
+    return 'temp' in field.lower()
+
+
+def _weather_location(group_type: str, group_id: int, sensors: list[Sensor]) -> str:
+    """
+    La localisation météo est portée par le webhook (un lieu physique par
+    webhook) ou, pour un capteur autonome, par le capteur lui-même.
+    """
+    if group_type == 'webhook':
+        return get_object_or_404(Webhook, pk=group_id).weather_location
+    return sensors[0].weather_location if sensors else ''
 
 
 def _resolve_group(group_type: str, group_id: int, user):
@@ -132,13 +160,37 @@ class DashboardChartView(APIView):
         series = []
         for s in sensors:
             qs = s.readings.filter(timestamp__gte=start, timestamp__lte=end, data__has_key=field).order_by('timestamp')
-            points = [{'t': r.timestamp.isoformat(), 'v': r.data.get(field)} for r in qs]
+            points = [{'t': _local_iso(r.timestamp), 'v': r.data.get(field)} for r in qs]
             series.append({'sensor_id': s.id, 'name': s.name, 'location': s.location, 'points': points})
 
         return Response({
             'period': {'start': start.isoformat(), 'end': end.isoformat()},
             'sensors': series,
+            'weather': self._weather_series(group_type, group_id, sensors, field, start, end),
         })
+
+    @staticmethod
+    def _weather_series(group_type, group_id, sensors, field, start, end):
+        """
+        Prévision horaire à superposer aux séries capteurs, ou None.
+
+        Réservée aux grandeurs thermiques : les capteurs et la prévision
+        partagent le même axe Y, une courbe en °C sous une série d'humidité ou
+        de tension serait illisible et fausse. La plage demandée est la période
+        affichée entière — pour « jour », ça inclut donc les heures pas encore
+        écoulées, ce qui est bien l'intérêt d'une prévision.
+        """
+        if not _is_temperature(field):
+            return None
+
+        location = _weather_location(group_type, group_id, sensors)
+        points = weather.get_hourly_temperatures(location, start, end)
+        if not points:
+            return None
+        return {
+            'location': location,
+            'points': [{'t': _local_iso(t), 'v': v} for t, v in points],
+        }
 
 
 class DashboardGaugesView(APIView):
@@ -164,19 +216,14 @@ class DashboardGaugesView(APIView):
 
         interior_sensors = [s for s in sensors if s.location == 'interior']
         exterior_sensor  = next((s for s in sensors if s.location == 'exterior'), None)
-        is_temperature   = 'temp' in field.lower()
+        is_temperature   = _is_temperature(field)
 
         exterior_value, exterior_ts = (_latest_value(exterior_sensor, field) if exterior_sensor else (None, None))
 
         if is_temperature:
-            # La localisation météo est portée par le webhook (un lieu physique
-            # par webhook) ou, pour un capteur autonome, par le capteur lui-même.
-            if group_type == 'webhook':
-                webhook = get_object_or_404(Webhook, pk=group_id)
-                weather_location = webhook.weather_location
-            else:
-                weather_location = sensors[0].weather_location
-            gauge_min, gauge_max = weather.gauge_bounds_for_temperature(weather_location)
+            gauge_min, gauge_max = weather.gauge_bounds_for_temperature(
+                _weather_location(group_type, group_id, sensors)
+            )
         else:
             # Pas de plage météo pour une grandeur non thermique : la jauge se
             # cadre sur les valeurs réellement observées (tous capteurs du groupe) sur

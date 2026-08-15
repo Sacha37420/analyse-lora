@@ -4,7 +4,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import * as Plotly from 'plotly.js-basic-dist-min';
-import { LoraService, DashboardGroup, GaugeData, Period } from '../../core/lora.service';
+import { LoraService, DashboardGroup, DashboardChartResult, GaugeData, Period } from '../../core/lora.service';
 import { GaugeComponent } from '../../shared/gauge/gauge';
 
 const PERIODS: { value: Period; label: string }[] = [
@@ -102,7 +102,7 @@ export class GroupPanelComponent implements OnInit, OnDestroy {
     this.lora.getDashboardChart(this.group.type, this.group.id, field, this.period()).subscribe({
       next: data => {
         this.chartLoading.set(false);
-        setTimeout(() => this.drawChart(data.sensors), 0);
+        setTimeout(() => this.drawChart(data), 0);
       },
       error: () => this.chartLoading.set(false),
     });
@@ -116,9 +116,12 @@ export class GroupPanelComponent implements OnInit, OnDestroy {
     }
   }
 
-  private drawChart(series: { sensor_id: number; name: string; points: { t: string; v: number }[] }[]): void {
+  private drawChart(data: DashboardChartResult): void {
     const div = this.plotRef?.nativeElement;
     if (!div) return;
+
+    const series  = data.sensors;
+    const weather = data.weather;
 
     const rootStyle     = getComputedStyle(document.documentElement);
     const gridColor     = rootStyle.getPropertyValue('--border').trim();
@@ -129,7 +132,9 @@ export class GroupPanelComponent implements OnInit, OnDestroy {
 
     // Aire pleine (wash ~15%) réservée à une seule série : superposer plusieurs
     // remplissages translucides brouille les couleurs — au-delà, lignes nues.
-    const singleSeries = series.length === 1;
+    // La prévision météo compte dans ce décompte : une aire pleine sous une
+    // courbe en pointillés rend les deux illisibles.
+    const singleSeries = series.length === 1 && !weather;
     const unit = this.unit;
 
     const traces: Plotly.Data[] = series.map(s => {
@@ -148,10 +153,28 @@ export class GroupPanelComponent implements OnInit, OnDestroy {
       };
     });
 
+    // La prévision n'est pas un capteur : elle reste hors de la palette
+    // catégorielle (--series-N, identité d'un capteur) et se lit comme du
+    // contexte — trait en pointillés, gris de texte secondaire.
+    if (weather && weather.points.length) {
+      const label = `Prévision ${weather.location}`;
+      traces.push({
+        type: 'scatter',
+        mode: 'lines',
+        name: label,
+        x: weather.points.map(p => p.t),
+        y: weather.points.map(p => p.v),
+        line: { color: axisTextColor, width: 2, dash: 'dot', shape: 'spline', smoothing: 0.4 },
+        fill: 'none',
+        hovertemplate: `%{y:.1f}${unit}<extra>${label}</extra>`,
+        connectgaps: false,
+      });
+    }
+
     const layout: Partial<Plotly.Layout> = {
       autosize: true,
       height: 320,
-      margin: { l: 46, r: 16, t: series.length > 1 ? 36 : 12, b: 32 },
+      margin: { l: 46, r: 16, t: traces.length > 1 ? 36 : 12, b: 32 },
       paper_bgcolor: 'transparent',
       plot_bgcolor: 'transparent',
       font: { family: fontFamily, color: axisTextColor, size: 12 },
@@ -170,7 +193,7 @@ export class GroupPanelComponent implements OnInit, OnDestroy {
         ticksuffix: unit,
         tickfont: { color: axisTextColor, size: 11 },
       },
-      showlegend: series.length > 1,
+      showlegend: traces.length > 1,
       legend: { orientation: 'h', x: 1, xanchor: 'right', y: 1.02, yanchor: 'bottom', font: { color: axisTextColor, size: 12 } },
       hovermode: 'x unified',
       hoverlabel: {
