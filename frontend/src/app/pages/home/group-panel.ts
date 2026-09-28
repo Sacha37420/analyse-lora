@@ -4,7 +4,8 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import * as Plotly from 'plotly.js-basic-dist-min';
-import { LoraService, DashboardGroup, DashboardChartResult, GaugeData, Period } from '../../core/lora.service';
+import { LoraService, DashboardGroup, DashboardChartResult, GaugeData, Period, TTNBackfillResult } from '../../core/lora.service';
+import { KeycloakService } from '../../core/keycloak.service';
 import { GaugeComponent } from '../../shared/gauge/gauge';
 
 const PERIODS: { value: Period; label: string }[] = [
@@ -32,6 +33,7 @@ export class GroupPanelComponent implements OnInit, OnDestroy {
   @Input({ required: true }) group!: DashboardGroup;
 
   private lora = inject(LoraService);
+  private kc   = inject(KeycloakService);
   private plotted = false;
   private sensorColorMap = new Map<number, string>();
 
@@ -45,6 +47,15 @@ export class GroupPanelComponent implements OnInit, OnDestroy {
   loading       = signal(true);
   chartLoading  = signal(false);
   error         = signal<string | null>(null);
+
+  backfilling    = signal(false);
+  backfillResult = signal<TTNBackfillResult | null>(null);
+  backfillError  = signal<string | null>(null);
+
+  /** Rattrapage réservé aux developers (utilise la clé API TTN) — voir api/ttn.py. */
+  get canBackfill(): boolean {
+    return this.group.protocol === 'ttn' && this.kc.isDeveloper;
+  }
 
   get isTemperature(): boolean {
     return this.selectedField().toLowerCase().includes('temp');
@@ -75,6 +86,34 @@ export class GroupPanelComponent implements OnInit, OnDestroy {
     if (this.plotted && this.plotRef?.nativeElement) {
       Plotly.purge(this.plotRef.nativeElement);
     }
+  }
+
+  backfillFromTTN(): void {
+    this.backfilling.set(true);
+    this.backfillResult.set(null);
+    this.backfillError.set(null);
+    this.lora.ttnBackfill(this.group.type, this.group.id).subscribe({
+      next: r => {
+        this.backfilling.set(false);
+        this.backfillResult.set(r);
+        // Un groupe jusque-là vide n'a encore ni grandeurs ni graphique : tout recharger.
+        if (r.inserted > 0) {
+          if (this.fields().length) this.refresh(); else this.ngOnInit();
+        }
+      },
+      error: e => {
+        this.backfilling.set(false);
+        this.backfillError.set(e.error?.error ?? `Erreur ${e.status}`);
+      },
+    });
+  }
+
+  insertedSummary(r: TTNBackfillResult): string {
+    return r.sensors.filter(s => s.inserted > 0).map(s => `${s.name} : ${s.inserted}`).join(', ');
+  }
+
+  formatDate(iso: string): string {
+    return new Date(iso).toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' });
   }
 
   onFieldChange(): void { this.refresh(); }

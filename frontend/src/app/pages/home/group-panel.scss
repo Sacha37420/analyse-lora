@@ -9,6 +9,23 @@
   margin-bottom: 16px;
 
   h2 { font-size: 18px; font-weight: 700; }
+
+  .backfill-btn { margin-left: auto; min-height: 44px; }
+}
+
+.backfill-report {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 12px;
+  padding: var(--space-3, 12px);
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  color: var(--text);
+
+  .hint { width: 100%; color: var(--text-mute); font-size: 13px; }
+  .btn { min-height: 44px; }
 }
 
 .panel-header-row {

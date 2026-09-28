@@ -14,8 +14,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from . import weather
+from . import ttn, weather
 from .models import Sensor, Webhook
+from .permissions import IsDeveloper
 from .views import _has_sensor_access
 
 PARIS = ZoneInfo('Europe/Paris')
@@ -104,6 +105,7 @@ class DashboardGroupsView(APIView):
             if sensors:
                 groups.append({
                     'type': 'webhook', 'id': webhook.id, 'name': webhook.name,
+                    'protocol': webhook.protocol,
                     'sensors': [_sensor_brief(s) for s in sensors],
                 })
 
@@ -111,6 +113,7 @@ class DashboardGroupsView(APIView):
             if _has_sensor_access(user, sensor):
                 groups.append({
                     'type': 'sensor', 'id': sensor.id, 'name': sensor.name,
+                    'protocol': sensor.protocol,
                     'sensors': [_sensor_brief(sensor)],
                 })
 
@@ -288,3 +291,41 @@ class DashboardGaugesView(APIView):
             })
 
         return Response({'gauges': gauges})
+
+
+class DashboardTTNBackfillView(APIView):
+    """
+    POST /api/dashboard/groups/:type/:id/ttn-backfill/ — récupère depuis la
+    Storage Integration TTN les uplinks absents de la base (voir api/ttn.py).
+
+    Réservé aux developers : utilise la clé API TTN du webhook/capteur, qui n'est
+    visible que d'eux.
+    """
+
+    permission_classes = [IsAuthenticated, IsDeveloper]
+
+    def post(self, request, group_type, group_id):
+        if group_type == 'webhook':
+            webhook   = get_object_or_404(Webhook, pk=group_id)
+            protocol  = webhook.protocol
+            config    = webhook.connection_config
+            sensors   = list(webhook.sensors.all())
+            device_id = None
+        elif group_type == 'sensor':
+            sensor    = get_object_or_404(Sensor, pk=group_id, webhook__isnull=True)
+            protocol  = sensor.protocol
+            config    = sensor.connection_config
+            sensors   = [sensor]
+            device_id = config.get('device_id') or None
+            if not device_id:
+                return Response({'error': 'Device ID TTN non renseigné sur ce capteur.'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            return Response(status=status.HTTP_404_NOT_FOUND)
+
+        if protocol != 'ttn':
+            return Response({'error': 'Rattrapage disponible uniquement pour le protocole TTN.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            return Response(ttn.backfill(config, sensors, device_id))
+        except ttn.TTNError as e:
+            return Response({'error': str(e)}, status=status.HTTP_502_BAD_GATEWAY)

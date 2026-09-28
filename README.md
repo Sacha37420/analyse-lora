@@ -59,6 +59,19 @@ directement.**
 | `GET` `POST` | `/api/sensors/<id>/users/` | Accès utilisateurs (developers) |
 | `GET` `POST` | `/api/sensors/<id>/measures/` | Grandeurs calculées |
 | `GET` | `/api/measures/<id>/compute/` | Évaluer la formule sur une plage |
+| `POST` | `/api/dashboard/groups/<type>/<id>/ttn-backfill/` | Combler les trous depuis TTN (developers) |
+
+### Combler les trous depuis TTN
+
+Le webhook TTN ne rejoue jamais un uplink qu'il n'a pas pu livrer (backend arrêté, base
+injoignable…). Le bouton **« Combler les trous depuis TTN »** du tableau de bord (developers,
+groupes en protocole TTN) relit les uplinks conservés par la **Storage Integration** de TTN et
+insère ceux absents de la base — déduplication par horodatage exact, relançable sans risque.
+
+Prérequis côté TTN : Storage Integration activée sur l'application (Console → Integrations →
+Storage Integration), et clé API TTN renseignée sur le webhook avec le droit *Read application
+traffic*. Rétention courte sur la Community Edition (~2 jours constatés) : un trou plus ancien
+n'est pas récupérable. Code : `backend/api/ttn.py`.
 
 ---
 

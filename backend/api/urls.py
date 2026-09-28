@@ -22,6 +22,7 @@ from .dashboard import (
     DashboardFieldsView,
     DashboardChartView,
     DashboardGaugesView,
+    DashboardTTNBackfillView,
 )
 
 urlpatterns = [
@@ -51,6 +52,7 @@ urlpatterns = [
     path('dashboard/groups/<str:group_type>/<int:group_id>/fields/', DashboardFieldsView.as_view()),
     path('dashboard/groups/<str:group_type>/<int:group_id>/chart/',  DashboardChartView.as_view()),
     path('dashboard/groups/<str:group_type>/<int:group_id>/gauges/', DashboardGaugesView.as_view()),
+    path('dashboard/groups/<str:group_type>/<int:group_id>/ttn-backfill/', DashboardTTNBackfillView.as_view()),
 
     # Grandeurs calculées
     path('sensors/<int:pk>/measures/',                ComputedMeasureListView.as_view()),

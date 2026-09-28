@@ -2,7 +2,35 @@
   <div class="group-header">
     <h2>{{ group.name }}</h2>
     <span class="badge badge-gray">{{ group.type === 'webhook' ? 'webhook' : 'capteur autonome' }}</span>
+    @if (canBackfill) {
+      <button class="btn btn-ghost backfill-btn" (click)="backfillFromTTN()" [disabled]="backfilling()"
+              title="Récupère les mesures manquantes encore conservées par la Storage Integration TTN">
+        {{ backfilling() ? 'Interrogation de TTN…' : 'Combler les trous depuis TTN' }}
+      </button>
+    }
   </div>
+
+  @if (backfillError()) {
+    <p class="error-msg">{{ backfillError() }}</p>
+  }
+  @if (backfillResult(); as r) {
+    <div class="backfill-report">
+      <span>
+        @if (r.inserted > 0) {
+          <strong>{{ r.inserted }} mesure(s) récupérée(s)</strong> ({{ insertedSummary(r) }}).
+        } @else {
+          <strong>Aucun trou à combler</strong> : les {{ r.fetched }} uplinks conservés par TTN sont déjà en base.
+        }
+      </span>
+      @if (r.available_since) {
+        <span class="hint">TTN conserve l'historique depuis le {{ formatDate(r.available_since) }} — les trous plus anciens ne sont pas récupérables.</span>
+      }
+      @if (r.unmatched_devices.length) {
+        <span class="hint">Devices TTN rattachés à aucun capteur : {{ r.unmatched_devices.join(', ') }}.</span>
+      }
+      <button class="btn btn-ghost" (click)="backfillResult.set(null)">Fermer</button>
+    </div>
+  }
 
   @if (loading()) {
     <p class="loading-msg">Chargement…</p>

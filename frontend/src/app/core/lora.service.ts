@@ -133,7 +133,18 @@ export interface DashboardGroup {
   type: 'webhook' | 'sensor';
   id: number;
   name: string;
+  protocol: string;
   sensors: DashboardSensorBrief[];
+}
+
+/** Compte rendu d'un rattrapage depuis la Storage Integration TTN. */
+export interface TTNBackfillResult {
+  /** Plus ancien uplink encore conservé par TTN — rien n'est récupérable avant. */
+  available_since: string | null;
+  fetched: number;
+  inserted: number;
+  sensors: { sensor_id: number; name: string; available: number; inserted: number }[];
+  unmatched_devices: string[];
 }
 
 export interface ChartPoint { t: string; v: number }
@@ -300,6 +311,10 @@ export class LoraService {
   getDashboardGauges(type: string, id: number, field: string, period: Period): Observable<{ gauges: GaugeData[] }> {
     const params = new HttpParams().set('field', field).set('period', period);
     return this.http.get<{ gauges: GaugeData[] }>(`${this.base}/api/dashboard/groups/${type}/${id}/gauges/`, { params });
+  }
+
+  ttnBackfill(type: string, id: number): Observable<TTNBackfillResult> {
+    return this.http.post<TTNBackfillResult>(`${this.base}/api/dashboard/groups/${type}/${id}/ttn-backfill/`, {});
   }
 
   // ── Météo (config par webhook, ou par capteur autonome) ─────────────────
