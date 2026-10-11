@@ -205,13 +205,7 @@ class GrandeursCalculeesTests(SocleTestCase):
     def test_liste_des_grandeurs_rendue_a_qui_a_l_acces(self):
         self.assertEqual(self.dev.get(f'/api/sensors/{self.s.id}/measures/').json()[0]['id'], self.m.id)
 
-    # DÉFAUT (I4) — ComputedMeasureListView.get_queryset appelle
-    # self.permission_denied() quand l'utilisateur n'a pas accès, MAIS l'enveloppe
-    # dans un `try/except Exception` qui avale la PermissionDenied et renvoie
-    # ComputedMeasure.objects.none(). Résultat : 200 avec une liste vide au lieu
-    # d'un 403. Pas de fuite de données (liste vide), mais le refus est masqué —
-    # le `except Exception` large devrait au moins laisser passer PermissionDenied.
-    @unittest.expectedFailure
+    # Corrigé : get_queryset avalait la PermissionDenied (200 + liste vide).
     def test_liste_des_grandeurs_refusee_sans_acces(self):
         self.assertEqual(self.etranger.get(f'/api/sensors/{self.s.id}/measures/').status_code, 403)
 

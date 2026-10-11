@@ -3,6 +3,7 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from rest_framework import status
+from rest_framework.exceptions import NotAuthenticated, PermissionDenied
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
@@ -689,6 +690,10 @@ class ComputedMeasureListView(ListCreateAPIView):
     def get_queryset(self):
         try:
             return self._get_sensor().measures.all()
+        except (PermissionDenied, NotAuthenticated):
+            # Le refus d'accès au capteur doit sortir tel quel (403) : avalé par
+            # le `except` ci-dessous, il devenait un 200 avec une liste vide.
+            raise
         except Exception:
             return ComputedMeasure.objects.none()
 
