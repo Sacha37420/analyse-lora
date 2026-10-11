@@ -704,6 +704,23 @@ class ComputedMeasureDetailView(RetrieveUpdateDestroyAPIView):
     serializer_class   = ComputedMeasureSerializer
     permission_classes = [IsAuthenticated]
 
+    # Même règle que le capteur parent (_has_sensor_access), en lecture comme en
+    # écriture et en suppression : sans elle, tout compte authentifié lisait,
+    # modifiait et supprimait la grandeur d'un capteur qui ne lui est pas ouvert.
+    def get_object(self):
+        obj = super().get_object()
+        if not _has_sensor_access(self.request.user, obj.sensor):
+            self.permission_denied(self.request)
+        return obj
+
+    def perform_update(self, serializer):
+        # `sensor` est modifiable : on ne déplace pas une grandeur vers un
+        # capteur auquel on n'a pas accès.
+        cible = serializer.validated_data.get('sensor')
+        if cible is not None and not _has_sensor_access(self.request.user, cible):
+            self.permission_denied(self.request)
+        serializer.save()
+
 
 class MeasureComputeView(APIView):
     """

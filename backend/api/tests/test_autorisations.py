@@ -215,19 +215,31 @@ class GrandeursCalculeesTests(SocleTestCase):
     def test_liste_des_grandeurs_refusee_sans_acces(self):
         self.assertEqual(self.etranger.get(f'/api/sensors/{self.s.id}/measures/').status_code, 403)
 
-    # DÉFAUT (I4) — ComputedMeasureDetailView (GET/PUT/DELETE /api/measures/:pk/)
-    # ne porte que IsAuthenticated : aucun contrôle d'accès au capteur. Tout
-    # compte des groupes autorisés (sans aucun SensorUserAccess) lit, modifie et
-    # SUPPRIME la grandeur d'un capteur d'autrui — alors que la liste et le
-    # compute de la même grandeur, eux, vérifient l'accès (_has_sensor_access).
-    @unittest.expectedFailure
+    # Corrigé : ComputedMeasureDetailView ne portait que IsAuthenticated.
     def test_detail_d_une_grandeur_exige_l_acces_au_capteur(self):
         self.assertEqual(self.etranger.get(f'/api/measures/{self.m.id}/').status_code, 403)
 
-    @unittest.expectedFailure
-    def test_suppression_d_une_grandeur_exige_l_acces_au_capteur(self):
-        self.etranger.delete(f'/api/measures/{self.m.id}/')
-        self.assertTrue(ComputedMeasure.objects.filter(pk=self.m.id).exists())
+    def test_modification_et_suppression_d_une_grandeur_exigent_l_acces_au_capteur(self):
+        url = f'/api/measures/{self.m.id}/'
+        self.assertEqual(self.etranger.patch(url, {'formula': '0'}, format='json').status_code, 403)
+        self.assertEqual(self.etranger.put(url, {'sensor': self.s.id, 'name': 'F', 'formula': '0'},
+                                           format='json').status_code, 403)
+        self.assertEqual(self.etranger.delete(url).status_code, 403)
+        self.m.refresh_from_db()
+        self.assertEqual(self.m.formula, "row['t']*9/5+32")
+
+    def test_qui_a_l_acces_au_capteur_gere_sa_grandeur(self):
+        url = f'/api/measures/{self.m.id}/'
+        self.donne_acces(self.s, 'ami@exemple.org')
+        self.assertEqual(self.ami.get(url).status_code, 200)
+        self.assertEqual(self.ami.patch(url, {'unit': '°F'}, format='json').status_code, 200)
+        # … mais ne la déplace pas vers un capteur qui ne lui est pas ouvert.
+        autre = self.sensor('b')
+        self.assertEqual(self.ami.patch(url, {'sensor': autre.id}, format='json').status_code, 403)
+        self.m.refresh_from_db()
+        self.assertEqual(self.m.sensor_id, self.s.id)
+        self.assertEqual(self.ami.delete(url).status_code, 204)
+        self.assertEqual(self.dev.get(url).status_code, 404)
 
     # DÉFAUT (I4) — ComputedMeasureListView.perform_create ne revérifie pas
     # l'accès au capteur (get_queryset le fait, mais CreateModelMixin ne passe
