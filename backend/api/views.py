@@ -698,8 +698,9 @@ class ComputedMeasureListView(ListCreateAPIView):
             return ComputedMeasure.objects.none()
 
     def perform_create(self, serializer):
-        sensor = get_object_or_404(Sensor, pk=self.kwargs['pk'])
-        serializer.save(sensor=sensor)
+        # Même contrôle que la lecture : la création ne passe pas par
+        # get_queryset, elle doit vérifier l'accès au capteur elle-même.
+        serializer.save(sensor=self._get_sensor())
 
 
 class ComputedMeasureDetailView(RetrieveUpdateDestroyAPIView):

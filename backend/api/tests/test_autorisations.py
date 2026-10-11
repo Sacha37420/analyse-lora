@@ -235,13 +235,18 @@ class GrandeursCalculeesTests(SocleTestCase):
         self.assertEqual(self.ami.delete(url).status_code, 204)
         self.assertEqual(self.dev.get(url).status_code, 404)
 
-    # DÉFAUT (I4) — ComputedMeasureListView.perform_create ne revérifie pas
-    # l'accès au capteur (get_queryset le fait, mais CreateModelMixin ne passe
-    # pas par get_queryset). Un membre sans accès crée une grandeur sur
-    # n'importe quel capteur.
-    @unittest.expectedFailure
+    # Corrigé : perform_create ne revérifiait pas l'accès au capteur.
     def test_creation_d_une_grandeur_exige_l_acces_au_capteur(self):
+        # Corps complet et valide : le refus vient bien du contrôle d'accès.
         resp = self.etranger.post(f'/api/sensors/{self.s.id}/measures/',
-                                  {'name': 'G', 'formula': "row['t']"}, format='json')
-        self.assertIn(resp.status_code, (403, 404))
+                                  {'sensor': self.s.id, 'name': 'G', 'formula': "row['t']"}, format='json')
+        self.assertEqual(resp.status_code, 403)
         self.assertEqual(ComputedMeasure.objects.filter(name='G').count(), 0)
+        # Avec l'accès au capteur, la création passe et s'attache à CE capteur.
+        self.donne_acces(self.s, 'ami@exemple.org')
+        resp = self.ami.post(f'/api/sensors/{self.s.id}/measures/',
+                             {'sensor': self.s.id, 'name': 'G', 'formula': "row['t']"}, format='json')
+        self.assertEqual(resp.status_code, 201, resp.content)
+        self.assertEqual(ComputedMeasure.objects.get(name='G').sensor_id, self.s.id)
+        self.assertEqual(self.dev.post('/api/sensors/999999/measures/',
+                                       {'sensor': self.s.id, 'name': 'H', 'formula': '1'}, format='json').status_code, 404)
