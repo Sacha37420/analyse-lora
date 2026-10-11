@@ -5,7 +5,6 @@ téléchargement du JWKS est remplacé. Trois groupes ouvrent l'app
 (`developers,amis,famille`) ; tout le reste est refusé.
 """
 import time
-import unittest
 
 import jwt
 from rest_framework.test import APIClient
@@ -87,11 +86,7 @@ class SerrureTests(SocleTestCase):
         self.assertTrue(body['is_developer'])
         self.assertEqual(self.get(jeton('a@b.org', ['amis'])).json()['is_developer'], False)
 
-    # DÉFAUT (I4) — KeycloakJWTAuthentication n'attrape que InvalidTokenError.
-    # Une clé `kid` absente du JWKS fait lever PyJWKClientError (hors de cette
-    # hiérarchie) : 500 non géré au lieu d'un 401/403. L'accès reste fermé, mais
-    # un jeton forgé provoque des 500 à volonté.
-    @unittest.expectedFailure
+    # Corrigé (était un 500) : PyJWKClientError est traduit en refus.
     def test_kid_inconnu_repond_un_refus_propre(self):
         c = APIClient(raise_request_exception=False)
         c.credentials(HTTP_AUTHORIZATION=f"Bearer {jeton(kid='inconnu')}")
@@ -101,3 +96,9 @@ class SerrureTests(SocleTestCase):
         c = APIClient(raise_request_exception=False)
         c.credentials(HTTP_AUTHORIZATION=f"Bearer {jeton(kid='inconnu')}")
         self.assertNotIn(c.get(URL).status_code, range(200, 400))
+
+    def test_jwks_injoignable_repond_un_refus_propre(self):
+        self.jwks_fetch.side_effect = jwt.PyJWKClientError('Keycloak injoignable (simulé)')
+        c = APIClient(raise_request_exception=False)
+        c.credentials(HTTP_AUTHORIZATION=f'Bearer {jeton()}')
+        self.assertIn(c.get(URL).status_code, (401, 403))
