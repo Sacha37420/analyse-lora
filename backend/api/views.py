@@ -1,4 +1,5 @@
 import math
+from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
@@ -330,8 +331,11 @@ class SensorListView(ListCreateAPIView):
         if _is_developer(user):
             return Sensor.objects.all()
         email = user.email
-        ids = SensorUserAccess.objects.filter(user_email=email).values_list('sensor_id', flat=True)
-        return Sensor.objects.filter(id__in=ids)
+        # Accès direct au capteur, ou accès à son webhook (même périmètre que
+        # _has_sensor_access : ce que données et tableau de bord montrent déjà).
+        return Sensor.objects.filter(
+            Q(user_accesses__user_email=email) | Q(webhook__user_accesses__user_email=email)
+        ).distinct()
 
 
 class SensorDetailView(RetrieveUpdateDestroyAPIView):

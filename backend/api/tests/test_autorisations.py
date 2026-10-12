@@ -1,6 +1,5 @@
 """Qui voit et gère quoi : developer vs accès nominatif (capteur ou webhook),
 clés d'API d'ingestion, réservations aux developers."""
-import unittest
 
 from api.models import ComputedMeasure, Sensor, SensorReading, SensorUserAccess
 from .socle import SocleTestCase, jeton
@@ -45,21 +44,52 @@ class VisibiliteCapteursTests(SocleTestCase):
         SensorReading.objects.create(sensor=s2, timestamp='2026-01-01T00:00:00Z', data={'t': 2})
         self.assertEqual(self.ami.get(f'/api/sensors/{s2.id}/data/').status_code, 200)
 
-    # DÉFAUT (I4) — incohérence de cloisonnement. L'accès au niveau du webhook
-    # est honoré par les vues passant par _has_sensor_access (données, tableau
-    # de bord…), mais la LISTE et le DÉTAIL d'un capteur ne regardent que les
-    # SensorUserAccess directs (SensorListView.get_queryset et la permission
-    # HasSensorAccess, api/permissions.py — elle ignore sensor.webhook). Un
-    # utilisateur à qui on a ouvert un webhook peut lire les mesures de ses
-    # capteurs mais pas leur fiche, et ne les voit pas dans sa liste : les deux
-    # vues devraient réutiliser _has_sensor_access comme les autres.
-    @unittest.expectedFailure
-    def test_acces_webhook_couvre_aussi_le_detail_du_capteur(self):
+    # Corrigé : la liste et la fiche ne regardaient que les accès directs
+    # (HasSensorAccess et SensorListView.get_queryset ignoraient le webhook),
+    # alors que données et tableau de bord suivaient déjà l'accès du webhook.
+    def test_acces_webhook_couvre_aussi_la_liste_et_la_fiche_en_lecture(self):
+        wh = self.webhook('app1', 'ttn')
+        s1 = self.sensor('w1', protocol='ttn', webhook=wh)
+        autre_wh = self.webhook('app2', 'ttn')
+        s_autre = self.sensor('w9', protocol='ttn', webhook=autre_wh)
+        self.donne_acces_webhook(wh, 'ami@exemple.org')
+        self.assertEqual(self.ami.get(f'/api/sensors/{s1.id}/').status_code, 200)
+        # self.a : accès direct (setUp) ; s1 : par le webhook ; rien d'autre.
+        self.assertEqual(self.ids(self.ami.get('/api/sensors/')), sorted([self.a.id, s1.id]))
+        self.assertEqual(self.ami.get(f'/api/sensors/{s_autre.id}/').status_code, 403)
+        self.assertEqual(self.ami.get(f'/api/sensors/{self.b.id}/').status_code, 403)
+        # Un autre membre sans aucun accès ne gagne rien.
+        self.assertEqual(self.ids(self.etranger.get('/api/sensors/')), [])
+        self.assertEqual(self.etranger.get(f'/api/sensors/{s1.id}/').status_code, 403)
+        # Capteur rattaché plus tard : couvert ; détaché du webhook : plus couvert.
+        s2 = self.sensor('w2', protocol='ttn', webhook=wh)
+        self.assertEqual(self.ami.get(f'/api/sensors/{s2.id}/').status_code, 200)
+        s2.webhook = None
+        s2.save()
+        self.assertEqual(self.ami.get(f'/api/sensors/{s2.id}/').status_code, 403)
+
+    def test_acces_webhook_ne_donne_que_la_lecture(self):
         wh = self.webhook('app1', 'ttn')
         s1 = self.sensor('w1', protocol='ttn', webhook=wh)
         self.donne_acces_webhook(wh, 'ami@exemple.org')
-        self.assertEqual(self.ami.get(f'/api/sensors/{s1.id}/').status_code, 200)
-        self.assertIn(s1.id, self.ids(self.ami.get('/api/sensors/')))
+        corps = {'name': 'z', 'slug': 'w1', 'protocol': 'ttn'}
+        self.assertEqual(self.ami.put(f'/api/sensors/{s1.id}/', corps, format='json').status_code, 403)
+        self.assertEqual(self.ami.patch(f'/api/sensors/{s1.id}/', {'name': 'z'}, format='json').status_code, 403)
+        self.assertEqual(self.ami.delete(f'/api/sensors/{s1.id}/').status_code, 403)
+        self.assertEqual(self.ami.put(f'/api/sensors/{s1.id}/connection/', {'protocol': 'mqtt'},
+                                      format='json').status_code, 403)
+        # Ni le webhook lui-même (secret d'ingestion), ni la gestion des accès.
+        self.assertEqual(self.ami.get(f'/api/webhooks/{wh.id}/').status_code, 403)
+        self.assertEqual(self.ami.get(f'/api/sensors/{s1.id}/users/').status_code, 403)
+        s1.refresh_from_db()
+        self.assertEqual(s1.name, 'w1')
+
+    def test_acces_direct_et_par_webhook_ne_double_pas_le_capteur(self):
+        wh = self.webhook('app1', 'ttn')
+        s1 = self.sensor('w1', protocol='ttn', webhook=wh)
+        self.donne_acces_webhook(wh, 'ami@exemple.org')
+        self.donne_acces(s1, 'ami@exemple.org')
+        self.assertEqual(self.ids(self.ami.get('/api/sensors/')), sorted([self.a.id, s1.id]))
 
 
 class ReserveAuxDevelopersTests(SocleTestCase):

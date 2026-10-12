@@ -24,4 +24,8 @@ class HasSensorAccess(BasePermission):
         if _is_developer(request.user):
             return True
         email = getattr(request.user, 'email', '')
-        return obj.user_accesses.filter(user_email=email).exists()
+        if obj.user_accesses.filter(user_email=email).exists():
+            return True
+        # Accès donné au niveau du webhook : il couvre ses capteurs (même règle
+        # que views._has_sensor_access, que suivent données et tableau de bord).
+        return bool(obj.webhook_id) and obj.webhook.user_accesses.filter(user_email=email).exists()
