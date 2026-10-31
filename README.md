@@ -126,9 +126,16 @@ row['TempC_SHT'] - (100 - row['Hum_SHT']) / 5   # point de rosée (approximation
 sqrt(row['x']**2 + row['y']**2)
 ```
 
-L'évaluation est sandboxée (`__builtins__` vidé, seules les fonctions du module `math` sont
-exposées) et renvoie `None` en cas d'erreur — une formule fausse produit une courbe vide, pas une
-exception. **Les noms de champs dépendent de votre décodeur** : regardez le premier uplink reçu
+La formule n'est **jamais passée à `eval`** : elle est analysée puis parcourue nœud par nœud
+(`backend/api/formula.py`). Sont admis : nombres, `row['champ']` (clé écrite en clair, imbrication
+`row['a']['b']` comprise), `+ - * / // % **`, comparaisons, `and`/`or`/`not`, `a if c else b`, les
+fonctions de `math` (sauf `factorial`, `comb`, `perm`) et `abs`, `round`, `min`, `max`, les
+constantes `pi`, `e`, `tau`, `inf`, `nan`. Tout le reste (attributs, lambdas, compréhensions,
+chaînes hors clé, arguments nommés…) est refusé **dès l'enregistrement** (400, champ `formula`),
+comme une formule de plus de 500 caractères. À l'évaluation, une erreur rend `None` — une formule
+fausse produit une courbe vide, pas une exception.
+
+**Les noms de champs dépendent de votre décodeur** : regardez le premier uplink reçu
 avant d'écrire une formule.
 
 ---
@@ -142,3 +149,6 @@ avant d'écrire une formule.
   explicitement (`SensorUserAccess`, par adresse e-mail).
 - L'`api_key` d'un capteur donne un accès **direct en lecture et en écriture** à ses mesures, sans
   passer par Keycloak. Elle est faite pour être collée dans un webhook — traitez-la comme un secret.
+  Seuls les `developers` la reçoivent : hors de ce groupe, la fiche capteur et
+  `/api/sensors/:id/connection/` ne rendent ni `api_key`, ni `connection_config`, ni la liste des
+  autres titulaires (`user_accesses`).

@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from .formula import FormulaError, compile_formula
 from .models import Sensor, SensorUserAccess, SensorReading, ComputedMeasure, Webhook, WebhookUserAccess
 
 
@@ -70,6 +71,16 @@ class SensorSerializer(serializers.ModelSerializer):
         return obj.readings.count()
 
 
+class SensorReadSerializer(SensorSerializer):
+    """Fiche capteur pour qui n'est pas dans `developers` (accès direct ou par
+    webhook) : sans `api_key` (elle permet d'injecter des mesures), sans
+    `connection_config` ni `user_accesses` (les autres titulaires)."""
+
+    class Meta(SensorSerializer.Meta):
+        fields = [f for f in SensorSerializer.Meta.fields
+                  if f not in ('api_key', 'connection_config', 'user_accesses')]
+
+
 class SensorListSerializer(serializers.ModelSerializer):
     """Serializer allégé pour la liste des capteurs."""
 
@@ -108,3 +119,11 @@ class ComputedMeasureSerializer(serializers.ModelSerializer):
         model  = ComputedMeasure
         fields = ['id', 'sensor', 'name', 'description', 'formula', 'unit', 'color', 'created_at']
         read_only_fields = ['created_at']
+
+    def validate_formula(self, value):
+        # Refusée ici (400) plutôt qu'à chaque calcul : voir api/formula.py.
+        try:
+            compile_formula(value)
+        except FormulaError as exc:
+            raise serializers.ValidationError(str(exc))
+        return value

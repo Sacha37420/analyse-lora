@@ -1,4 +1,3 @@
-import math
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -10,12 +9,14 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .formula import FormulaError, compile_formula, evaluate, safe_eval
 from .models import ComputedMeasure, Sensor, SensorReading, SensorUserAccess, Webhook, WebhookUserAccess
 from .permissions import HasSensorAccess, IsDeveloper, _is_developer
 from .serializers import (
     ComputedMeasureSerializer,
     SensorListSerializer,
     SensorReadingSerializer,
+    SensorReadSerializer,
     SensorSerializer,
     SensorUserAccessSerializer,
     WebhookSerializer,
@@ -229,16 +230,9 @@ WEBHOOK_GUIDES = {
 
 # ── Évaluation sécurisée de formule ──────────────────────────────────────────
 
-_MATH_BUILTINS = {k: getattr(math, k) for k in dir(math) if not k.startswith('_')}
-_MATH_BUILTINS.update({'abs': abs, 'round': round, 'min': min, 'max': max})
-
-
+# La formule n'est jamais passée à eval : voir api/formula.py (syntaxe admise).
 def _safe_eval(formula: str, row: dict):
-    try:
-        result = eval(formula, {'__builtins__': {}, 'row': row, **_MATH_BUILTINS})  # noqa: S307
-        return float(result)
-    except Exception:
-        return None
+    return safe_eval(formula, row)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -347,6 +341,12 @@ class SensorDetailView(RetrieveUpdateDestroyAPIView):
 
     queryset             = Sensor.objects.all()
     serializer_class     = SensorSerializer
+
+    def get_serializer_class(self):
+        # Hors developers : fiche sans api_key, connection_config ni user_accesses.
+        if _is_developer(self.request.user):
+            return SensorSerializer
+        return SensorReadSerializer
 
     def get_permissions(self):
         if self.request.method in ('PUT', 'PATCH', 'DELETE'):
@@ -541,12 +541,18 @@ class SensorConnectionView(APIView):
 
         guide   = dict(CONNECTION_GUIDES.get(sensor.protocol, {}))
         webhook = sensor.webhook
+        # Clé d'ingestion et configuration : developers seulement (même règle
+        # que la fiche capteur, SensorReadSerializer). La page qui les affiche
+        # est d'ailleurs réservée aux developers côté frontend.
+        secrets = (
+            {'connection_config': sensor.connection_config, 'api_key': sensor.api_key}
+            if _is_developer(user) else {}
+        )
         return Response({
             'sensor_id':        sensor.id,
             'slug':             sensor.slug,
             'protocol':         sensor.protocol,
-            'connection_config': sensor.connection_config,
-            'api_key':          sensor.api_key,
+            **secrets,
             'api_ingest_url':   f'/api/sensors/{sensor.pk}/data/',
             'guide':            guide,
             'webhook_guide':    WEBHOOK_GUIDES.get(sensor.protocol),
@@ -757,10 +763,18 @@ class MeasureComputeView(APIView):
         qs = qs.order_by('timestamp')[:2000]
 
         points = []
-        for reading in qs:
-            value = _safe_eval(measure.formula, reading.data)
-            if value is not None:
-                points.append({'t': reading.timestamp.isoformat(), 'v': value})
+        try:
+            tree = compile_formula(measure.formula)
+        except FormulaError:
+            # Formule refusée (enregistrée avant la validation, ou en base) :
+            # aucune valeur, comme une formule en erreur.
+            tree = None
+        for reading in qs if tree is not None else ():
+            try:
+                value = evaluate(tree, reading.data)
+            except Exception:
+                continue
+            points.append({'t': reading.timestamp.isoformat(), 'v': value})
 
         return Response({
             'measure': ComputedMeasureSerializer(measure).data,
