@@ -1,8 +1,7 @@
 import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-
-interface EnvWindow { __env?: { apiUrl?: string } }
+import { apiUrl } from './env';
 
 export interface Sensor {
   id: number;
@@ -189,7 +188,7 @@ export class LoraService {
   private http = inject(HttpClient);
 
   private get base(): string {
-    return (window as unknown as EnvWindow).__env?.apiUrl ?? 'http://localhost:8086';
+    return apiUrl();
   }
 
   // ── Utilisateur ────────────────────────────────────────────────────────

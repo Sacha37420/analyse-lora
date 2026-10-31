@@ -59,19 +59,24 @@ Frontend : aucune page hors `developerGuard` ne lit ces champs (déjà optionnel
 `npx ng build` non concluant en local (`node_modules` incomplet : `plotly.js-basic-dist-min` absent,
 erreur préexistante sans rapport) — à confirmer par le build Docker (`npm ci`).
 
-## Lot 4 — Report des correctifs du gabarit   ·   statut : à faire
+## Lot 4 — Report des correctifs du gabarit   ·   statut : en cours
 **Objectif :** même comportement que le gabarit corrigé (chantier T3 de `to_do_global.md`).
 **Tâches :**
-- [ ] Polices en chemin relatif (`frontend/src/styles.scss:3-11`, `url("/assets/…")` → `url("assets/…")`)
-- [ ] `redirectUri` sur la page courante (`core/keycloak.service.ts:27,32` utilise encore `env.appUrl`)
-- [ ] `tokenBases()` dans `core/auth.interceptor.ts`
-- [ ] `pkceMethod: 'S256'`, puis `--pkce` sur le client
+- [x] Polices en chemin relatif (`frontend/src/styles.scss:3-11`, `url("/assets/…")` → `url("assets/…")`)
+- [x] `redirectUri` sur la page courante (`core/redirect-uri.ts`, copie de lab-admin : même origine et sous `/lora/`, sinon `appUrl`)
+- [x] `tokenBases()` dans `core/auth.interceptor.ts` (`core/env.ts` : la seule API de l'app ; `core/token-scope.ts`, copie de lab-admin)
+- [x] `pkceMethod: 'S256'` (front) — `--pkce` sur le client reste à poser par l'architecte après déploiement
+- [x] Ports publiés liés à `${LAB_BIND_ADDR:-127.0.0.1}` (chantier « failles », I1)
 - [ ] Couleur par défaut d'une grandeur (`pages/measures/measure-view.ts:34,141`, `'#3b82f6'`) tirée d'un token CSS
 **Tests à passer avant de clore le lot :**
 - [ ] Un lien direct vers une fiche capteur y revient après la connexion Keycloak
 - [ ] Les WOFF2 répondent 200 derrière `/analyse-lora/`
 - [ ] `cloisonnement.spec.ts` 3/3
-**Vérifié le :**
+**Vérifié le :** 2026-10-31 — non déployé. Chantier « failles » (secteur E) : image candidate
+`analyse-lora-frontend:candidat` construite (`npm ci` + `ng build` OK ; le bundle porte
+`pkceMethod:"S256"`, les WOFF2 sont référencés en `./media/…`) ; `docker compose config` rend
+`host_ip: 127.0.0.1` pour les deux ports. Les trois tests du lot demandent le déploiement. Reste la
+couleur par défaut d'une grandeur (hors chantier).
 
 ## Lot 5 — Passage au chemin à portes   ·   statut : à faire
 **Objectif :** l'app se déploie par le moteur, tests compris (chantier T1 de `to_do_global.md`).
