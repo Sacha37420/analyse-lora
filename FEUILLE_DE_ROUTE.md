@@ -69,9 +69,9 @@ erreur préexistante sans rapport) — à confirmer par le build Docker (`npm ci
 - [x] Ports publiés liés à `${LAB_BIND_ADDR:-127.0.0.1}` (chantier « failles », I1)
 - [ ] Couleur par défaut d'une grandeur (`pages/measures/measure-view.ts:34,141`, `'#3b82f6'`) tirée d'un token CSS
 **Tests à passer avant de clore le lot :**
-- [ ] Un lien direct vers une fiche capteur y revient après la connexion Keycloak
-- [ ] Les WOFF2 répondent 200 derrière `/analyse-lora/`
-- [ ] `cloisonnement.spec.ts` 3/3
+- [x] Un lien direct vers une fiche capteur y revient après la connexion Keycloak — vérifié le 2026-11-01 (lab-runner, `e2e_member`)
+- [x] Les WOFF2 répondent 200 derrière `/analyse-lora/` — vérifié le 2026-11-01 (lab-runner, `e2e_member`)
+- [x] `cloisonnement.spec.ts` 3/3 — vérifié le 2026-11-01 (lab-runner, `e2e_member`)
 **Vérifié le :** 2026-10-31 — non déployé. Chantier « failles » (secteur E) : image candidate
 `analyse-lora-frontend:candidat` construite (`npm ci` + `ng build` OK ; le bundle porte
 `pkceMethod:"S256"`, les WOFF2 sont référencés en `./media/…`) ; `docker compose config` rend
