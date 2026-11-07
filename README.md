@@ -35,8 +35,10 @@ Capteur LoRaWAN  ──radio 868 MHz──►  Passerelle  ──IP──►  Se
 
 ## Démarrage
 
+Depuis la racine du lab :
+
 ```bash
-bash setup2.sh analyse-lora --yes
+bash scripts/setup2.sh analyse-lora --yes
 ```
 
 Le script enchaîne le nettoyage des containers, la propagation des URLs, le démarrage de sso-lab,
@@ -51,15 +53,27 @@ directement.**
 |---|---|---|
 | `GET` | `/api/me/` | Utilisateur courant (email, groupes) |
 | `GET` `POST` | `/api/sensors/` | Lister / créer un capteur |
-| `GET` `PUT` `DELETE` | `/api/sensors/<id>/` | Détail d'un capteur |
+| `GET` `PUT` `PATCH` `DELETE` | `/api/sensors/<id>/` | Détail d'un capteur |
 | **`POST`** | **`/api/sensors/<id>/data/`** | **Ingestion d'une mesure** |
 | `GET` | `/api/sensors/<id>/data/` | Lectures paginées (`start`, `end`, `page`, `page_size` ≤ 1000) |
 | `GET` `PUT` | `/api/sensors/<id>/connection/` | Config de connexion + guide + `api_key` |
 | `GET` | `/api/connection-methods/` | Tous les guides de connexion |
 | `GET` `POST` | `/api/sensors/<id>/users/` | Accès utilisateurs (developers) |
+| `DELETE` | `/api/sensors/<id>/users/<email>/` | Retirer un accès (developers) |
+| `GET` `POST` | `/api/webhooks/` | Webhooks : points d'ingestion partagés par plusieurs capteurs (developers) |
+| `GET` `PUT` `PATCH` `DELETE` | `/api/webhooks/<id>/` | Détail d'un webhook (developers) |
+| **`POST`** | **`/api/webhooks/<id>/data/`** | **Ingestion partagée** : l'uplink est routé vers le capteur d'après l'identifiant de device |
+| `GET` `POST` | `/api/webhooks/<id>/users/` | Accès utilisateurs au webhook (developers) |
+| `DELETE` | `/api/webhooks/<id>/users/<email>/` | Retirer un accès (developers) |
 | `GET` `POST` | `/api/sensors/<id>/measures/` | Grandeurs calculées |
+| `GET` `PUT` `PATCH` `DELETE` | `/api/measures/<id>/` | Détail d'une grandeur calculée |
 | `GET` | `/api/measures/<id>/compute/` | Évaluer la formule sur une plage |
+| `GET` | `/api/dashboard/groups/` | Groupes du tableau de bord (webhook ou capteur autonome) |
+| `GET` | `/api/dashboard/groups/<type>/<id>/fields/`, `…/chart/`, `…/gauges/` | Champs, courbes et jauges d'un groupe |
 | `POST` | `/api/dashboard/groups/<type>/<id>/ttn-backfill/` | Combler les trous depuis TTN (developers) |
+
+Derrière Caddy (avec un domaine), l'API est servie sous `/lora-api` : une route `/api/…` du
+tableau se joint à `https://<domaine>/lora-api/api/…`, et l'app elle-même à `https://<domaine>/lora/`.
 
 ### Combler les trous depuis TTN
 
