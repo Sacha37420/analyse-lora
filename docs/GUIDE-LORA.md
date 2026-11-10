@@ -410,7 +410,7 @@ la page *Connexion* du capteur (ou via `GET /api/sensors/<id>/connection/`).
 L'URL a cette forme — `<id>` est l'identifiant numérique du capteur :
 
 ```
-POST https://<votre-domaine>/api/sensors/<id>/data/
+POST https://<votre-domaine>/lora-api/api/sensors/<id>/data/
 ```
 
 ### 7.2 — Créer le webhook côté TTN
@@ -421,7 +421,7 @@ Dans la console TTN : **Integrations → Webhooks → Add webhook → Custom web
 |---|---|
 | Webhook ID | `analyse-lora` |
 | Webhook format | **JSON** |
-| Base URL | `https://<votre-domaine>/api/sensors/<id>/data/` |
+| Base URL | `https://<votre-domaine>/lora-api/api/sensors/<id>/data/` |
 | Additional headers | `Authorization` : `Bearer <api_key>` |
 | Enabled messages | **Uplink message** uniquement |
 
@@ -444,7 +444,7 @@ Attendez un uplink (ou provoquez-le : chez Dragino, un appui sur le bouton force
 - En ligne de commande, pour simuler un uplink sans attendre :
 
 ```bash
-curl -X POST https://<votre-domaine>/api/sensors/1/data/ \
+curl -X POST https://<votre-domaine>/lora-api/api/sensors/1/data/ \
   -H "Authorization: Bearer $API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"timestamp":"2026-07-14T10:00:00Z","data":{"TempC_SHT":21.5,"Hum_SHT":48.2}}'
