@@ -1,5 +1,7 @@
 """Qui voit et gère quoi : developer vs accès nominatif (capteur ou webhook),
 clés d'API d'ingestion, réservations aux developers."""
+import hmac
+from unittest import mock
 
 from api.models import ComputedMeasure, Sensor, SensorReading, SensorUserAccess
 from .socle import SocleTestCase, jeton
@@ -187,6 +189,22 @@ class IngestionParCleTests(SocleTestCase):
             self.assertEqual(resp.status_code, 403, h)
         self.assertEqual(SensorReading.objects.count(), 0)
 
+    def test_cle_comparee_a_temps_constant(self):
+        with mock.patch('api.views.hmac.compare_digest', wraps=hmac.compare_digest) as cmp:
+            resp = self.post(f'/api/sensors/{self.s.id}/data/', {'data': {'t': 1}},
+                             HTTP_X_API_KEY=self.s.api_key)
+            self.assertEqual(resp.status_code, 201)
+            resp = self.post(f'/api/webhooks/{self.wh.id}/data/', self.payload_ttn(),
+                             HTTP_X_API_KEY=self.wh.api_key)
+            self.assertEqual(resp.status_code, 201)
+        self.assertGreaterEqual(cmp.call_count, 2)
+
+    def test_cle_non_ascii_refusee_sans_erreur(self):
+        for path in (f'/api/sensors/{self.s.id}/data/', f'/api/webhooks/{self.wh.id}/data/'):
+            resp = self.post(path, self.payload_ttn(), HTTP_X_API_KEY='clé-ÿ')
+            self.assertEqual(resp.status_code, 403, path)
+        self.assertEqual(SensorReading.objects.count(), 0)
+
     def test_la_cle_d_un_capteur_n_ouvre_pas_un_autre(self):
         autre = self.sensor('b')
         resp = self.post(f'/api/sensors/{autre.id}/data/', {'data': {}}, HTTP_X_API_KEY=self.s.api_key)
@@ -198,6 +216,19 @@ class IngestionParCleTests(SocleTestCase):
         self.assertEqual(self.etranger.get(f'/api/sensors/{self.s.id}/data/').status_code, 403)
         self.donne_acces(self.s, 'ami@exemple.org')
         self.assertEqual(self.ami.get(f'/api/sensors/{self.s.id}/data/').json()['count'], 1)
+
+    def test_un_acces_en_lecture_n_ingere_pas_par_jeton(self):
+        # Lot 3 : accès direct ou par webhook = lecture ; seul un developer
+        # ingère avec son jeton (les autres passent par la clé du capteur).
+        self.donne_acces(self.s, 'ami@exemple.org')
+        self.donne_acces_webhook(self.wh, 'ami@exemple.org')
+        for sensor in (self.s, self.sw):
+            resp = self.ami.post(f'/api/sensors/{sensor.id}/data/', {'data': {'t': 1}}, format='json')
+            self.assertEqual(resp.status_code, 403, sensor.slug)
+            self.assertEqual(self.ami.get(f'/api/sensors/{sensor.id}/data/').status_code, 200)
+        self.assertEqual(SensorReading.objects.count(), 0)
+        resp = self.dev.post(f'/api/sensors/{self.s.id}/data/', {'data': {'t': 1}}, format='json')
+        self.assertEqual(resp.status_code, 201)
 
     def test_webhook_ingestion_route_vers_le_bon_capteur(self):
         resp = self.post(f'/api/webhooks/{self.wh.id}/data/', self.payload_ttn('dev-123'),

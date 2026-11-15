@@ -14,6 +14,8 @@ exactement le même `timestamp` en base (vérifié sur des données réelles), i
 n'est jamais inséré deux fois — l'opération peut être relancée à volonté.
 """
 import json
+import re
+from urllib.parse import quote
 
 import requests
 
@@ -27,10 +29,18 @@ class TTNError(Exception):
     pass
 
 
+# La région devient un nom d'hôte (`eu1`, `nam1`, `au1`…) : une seule étiquette
+# DNS, sans point, deux-points, barre ni `@`. Sinon `region` choisissait l'hôte
+# joint (réseau interne compris) et recevait la clé API TTN en en-tête.
+_REGION_RE = re.compile(r'[A-Za-z0-9](?:[A-Za-z0-9-]{0,30}[A-Za-z0-9])?')
+
+
 def _storage_url(region: str, app_id: str, device_id: str | None) -> str:
-    base = f'https://{region}.cloud.thethings.network/api/v3/as/applications/{app_id}'
+    if not _REGION_RE.fullmatch(region):
+        raise TTNError("Région TTN invalide : un identifiant court, par exemple « eu1 ».")
+    base = f'https://{region}.cloud.thethings.network/api/v3/as/applications/{quote(app_id, safe="@")}'
     if device_id:
-        base += f'/devices/{device_id}'
+        base += f'/devices/{quote(device_id, safe="@")}'
     return base + '/packages/storage/uplink_message'
 
 
@@ -42,14 +52,16 @@ def fetch_stored_uplinks(config: dict, device_id: str | None = None) -> list[dic
     if not (region and app_id and api_key):
         raise TTNError("Configuration TTN incomplète : région, Application ID et clé API TTN sont requis.")
 
+    url = _storage_url(region, app_id, device_id)
     try:
         r = requests.get(
-            _storage_url(region, app_id, device_id),
+            url,
             headers={'Authorization': f'Bearer {api_key}', 'Accept': 'text/event-stream'},
             timeout=TIMEOUT_S,
         )
     except requests.RequestException as e:
-        raise TTNError(f"TTN injoignable : {e}") from e
+        # Message fixe : le texte d'une exception `requests` porte l'URL demandée.
+        raise TTNError("TTN injoignable.") from e
 
     if r.status_code in (401, 403):
         raise TTNError(

@@ -1,3 +1,5 @@
+import hmac
+
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -248,6 +250,13 @@ def _has_sensor_access(user, sensor) -> bool:
     return bool(sensor.webhook_id) and sensor.webhook.user_accesses.filter(user_email=email).exists()
 
 
+def _same_key(given: str, expected: str) -> bool:
+    """Clé d'ingestion comparée à temps constant ; une clé attendue vide n'ouvre rien."""
+    if not given or not expected:
+        return False
+    return hmac.compare_digest(given.encode(), expected.encode())
+
+
 def _normalize_payload(payload: dict, protocol: str):
     """Normalise les formats TTN / ChirpStack / standard vers (timestamp, data)."""
     now = timezone.now()
@@ -452,13 +461,13 @@ class SensorDataView(APIView):
         api_key_header = request.headers.get('X-API-Key', '')
         return auth_header, api_key_header
 
-    def _check_access(self, request, sensor) -> bool:
+    def _check_access(self, request, sensor, write=False) -> bool:
         auth_header    = request.headers.get('Authorization', '')
         api_key_header = request.headers.get('X-API-Key', '')
 
         # API key directe
         raw_key = api_key_header or (auth_header[7:] if auth_header.startswith('Bearer ') else '')
-        if raw_key == sensor.api_key:
+        if _same_key(raw_key, sensor.api_key):
             return True
 
         # JWT Keycloak
@@ -468,6 +477,10 @@ class SensorDataView(APIView):
         if result is None:
             return False
         user, _ = result
+        # Un accès nominatif (capteur ou webhook) ne donne que la lecture :
+        # injecter une mesure par jeton reste réservé aux developers (lot 3).
+        if write:
+            return _is_developer(user)
         return _has_sensor_access(user, sensor)
 
     def _get_jwt_user(self, request):
@@ -508,7 +521,7 @@ class SensorDataView(APIView):
 
     def post(self, request, pk):
         sensor = get_object_or_404(Sensor, pk=pk)
-        if not self._check_access(request, sensor):
+        if not self._check_access(request, sensor, write=True):
             return Response({'error': 'Accès refusé'}, status=status.HTTP_403_FORBIDDEN)
 
         payload             = request.data
@@ -646,7 +659,7 @@ class WebhookDataView(APIView):
         auth_header    = request.headers.get('Authorization', '')
         api_key_header = request.headers.get('X-API-Key', '')
         raw_key = api_key_header or (auth_header[7:] if auth_header.startswith('Bearer ') else '')
-        if raw_key == webhook.api_key:
+        if _same_key(raw_key, webhook.api_key):
             return True
 
         from .authentication import KeycloakJWTAuthentication

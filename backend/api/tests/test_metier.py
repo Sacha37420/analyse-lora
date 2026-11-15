@@ -136,6 +136,29 @@ class BackfillTTNTests(SocleTestCase):
         with self.assertRaises(ttn.TTNError):
             ttn.fetch_stored_uplinks({'region': 'eu1', 'app_id': 'a', 'api_key': 'k'})
 
+    def test_region_hors_etiquette_dns_refusee_sans_appel(self):
+        # La région forme le nom d'hôte : elle ne doit jamais désigner un autre hôte.
+        for region in ('evil.example', 'postgres:5432#', 'eu1/x?', 'a@b', 'eu1.'):
+            with self.subTest(region=region), mock.patch('api.ttn.requests.get') as get:
+                with self.assertRaises(ttn.TTNError):
+                    ttn.fetch_stored_uplinks({'region': region, 'app_id': 'a', 'api_key': 'k'})
+                get.assert_not_called()
+
+    def test_url_construite_sur_l_hote_ttn(self):
+        with mock.patch('api.ttn.requests.get', side_effect=ttn.requests.ConnectionError('x')) as get:
+            with self.assertRaises(ttn.TTNError):
+                ttn.fetch_stored_uplinks({'region': 'eu1', 'app_id': 'my-app@ttn', 'api_key': 'k'}, 'a/../b')
+        url = get.call_args.args[0]
+        self.assertTrue(url.startswith('https://eu1.cloud.thethings.network/api/v3/as/applications/my-app@ttn/devices/'))
+        self.assertNotIn('/../', url)
+
+    def test_message_d_erreur_reseau_sans_url(self):
+        with mock.patch('api.ttn.requests.get',
+                        side_effect=ttn.requests.ConnectionError('https://eu1.example/app-secrete')):
+            with self.assertRaises(ttn.TTNError) as ctx:
+                ttn.fetch_stored_uplinks({'region': 'eu1', 'app_id': 'app-secrete', 'api_key': 'k'})
+        self.assertNotIn('app-secrete', str(ctx.exception))
+
 
 class MeteoTests(SocleTestCase):
     """weather : repli quand le fournisseur est injoignable (réseau coupé par le
