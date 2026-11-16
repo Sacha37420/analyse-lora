@@ -1,6 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { messageErreur } from '../../core/http-error';
 import { LoraService, ConnectionInfo, ConnectionMethod, Webhook } from '../../core/lora.service';
 
 @Component({
@@ -21,6 +22,8 @@ export class SensorConnectionComponent implements OnInit {
   saving    = signal(false);
   error     = signal<string | null>(null);
   saveOk    = signal(false);
+  /** Échec d'enregistrement : affiché sous le bouton, sans masquer la saisie. */
+  saveError = signal<string | null>(null);
 
   activeMethodTab   = signal('');
   selectedWebhookId = signal<number | null>(null);
@@ -53,7 +56,7 @@ export class SensorConnectionComponent implements OnInit {
         this.selectedWebhookId.set(info.webhook?.id ?? null);
         this.loading.set(false);
       },
-      error: e => { this.error.set(`Erreur ${e.status}`); this.loading.set(false); },
+      error: e => { this.error.set(messageErreur(e, 'Chargement de la configuration impossible')); this.loading.set(false); },
     });
   }
 
@@ -73,13 +76,14 @@ export class SensorConnectionComponent implements OnInit {
     if (!info) return;
     this.saving.set(true);
     this.saveOk.set(false);
+    this.saveError.set(null);
     this.lora.updateConnectionConfig(this.sensorId, {
       protocol:          info.protocol,
       connection_config: info.connection_config,
       webhook:           this.selectedWebhookId(),
     }).subscribe({
       next: () => { this.saving.set(false); this.saveOk.set(true); },
-      error: e => { this.saving.set(false); this.error.set(`Erreur ${e.status}`); },
+      error: e => { this.saving.set(false); this.saveError.set(e.error?.error ?? messageErreur(e, 'Enregistrement impossible')); },
     });
   }
 

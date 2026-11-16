@@ -18,12 +18,12 @@
   <!-- Filtres -->
   <div class="filters card">
     <div class="form-group inline">
-      <label>Début</label>
-      <input type="datetime-local" [(ngModel)]="startDate">
+      <label for="data-start">Début</label>
+      <input id="data-start" type="datetime-local" [(ngModel)]="startDate">
     </div>
     <div class="form-group inline">
-      <label>Fin</label>
-      <input type="datetime-local" [(ngModel)]="endDate">
+      <label for="data-end">Fin</label>
+      <input id="data-end" type="datetime-local" [(ngModel)]="endDate">
     </div>
     <button class="btn btn-primary" (click)="loadData(1)">Filtrer</button>
     <button class="btn btn-ghost" (click)="startDate=''; endDate=''; loadData(1)">Réinitialiser</button>

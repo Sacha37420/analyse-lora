@@ -3,6 +3,8 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { LoraService, Sensor, SensorReading, ReadingsPage } from '../../core/lora.service';
+import { messageErreur } from '../../core/http-error';
+import { localInputToIso } from '../../core/local-datetime';
 
 @Component({
   selector: 'app-sensor-detail',
@@ -48,15 +50,16 @@ export class SensorDetailComponent implements OnInit {
 
   loadData(page = 1): void {
     this.loading.set(true);
+    this.error.set(null);
     this.currentPage = page;
     this.lora.getSensorData(this.sensorId, {
-      start:     this.startDate  || undefined,
-      end:       this.endDate    || undefined,
+      start:     localInputToIso(this.startDate),
+      end:       localInputToIso(this.endDate),
       page,
       page_size: 50,
     }).subscribe({
       next:  p => { this.page.set(p); this.loading.set(false); },
-      error: e => { this.error.set(`Erreur ${e.status ?? ''}`); this.loading.set(false); },
+      error: e => { this.error.set(messageErreur(e, 'Chargement des mesures impossible')); this.loading.set(false); },
     });
   }
 

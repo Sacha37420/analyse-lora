@@ -123,6 +123,9 @@
         <button class="btn btn-primary" (click)="save()" [disabled]="saving()">
           {{ saving() ? 'Enregistrement…' : 'Sauvegarder la configuration' }}
         </button>
+        @if (saveError()) {
+          <p class="error-msg" role="alert">{{ saveError() }}</p>
+        }
         @if (saveOk()) {
           <span class="save-ok">✓ Enregistré</span>
         }

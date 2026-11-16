@@ -84,6 +84,12 @@ def _resolve_group(group_type: str, group_id: int, user):
     return [s for s in sensors if _has_sensor_access(user, s)]
 
 
+def _is_number(v) -> bool:
+    # Les données d'un uplink sont du JSON libre : une valeur peut être une
+    # chaîne ou un booléen (« ok », true…), sur lesquels un écart n'a pas de sens.
+    return isinstance(v, (int, float)) and not isinstance(v, bool)
+
+
 def _latest_value(sensor: Sensor, field: str):
     reading = sensor.readings.filter(data__has_key=field).order_by('-timestamp').first()
     if reading is None:
@@ -252,7 +258,7 @@ class DashboardGaugesView(APIView):
 
             delta = None
             delta_color = None
-            if value is not None and exterior_value is not None:
+            if _is_number(value) and _is_number(exterior_value):
                 delta = value - exterior_value
                 if is_temperature:
                     ext_gt_int = exterior_value > value

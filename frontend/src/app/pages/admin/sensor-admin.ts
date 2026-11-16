@@ -1,6 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { messageErreur } from '../../core/http-error';
 import { LoraService, Sensor, UserAccess } from '../../core/lora.service';
 
 const PROTOCOLS = [
@@ -29,6 +30,7 @@ export class SensorAdminComponent implements OnInit {
   // Liste
   sensors = signal<Sensor[]>([]);
   loading = signal(true);
+  listError = signal<string | null>(null);
 
   // Formulaire création/édition
   editing      = signal<Sensor | null>(null);
@@ -59,9 +61,10 @@ export class SensorAdminComponent implements OnInit {
 
   loadSensors(): void {
     this.loading.set(true);
+    this.listError.set(null);
     this.lora.getSensors().subscribe({
       next: s => { this.sensors.set(s); this.loading.set(false); this.checkEditRoute(); },
-      error: () => this.loading.set(false),
+      error: e => { this.listError.set(messageErreur(e, 'Chargement des capteurs impossible')); this.loading.set(false); },
     });
   }
 
@@ -117,14 +120,18 @@ export class SensorAdminComponent implements OnInit {
       next: () => { this.saving.set(false); this.showForm.set(false); this.loadSensors(); },
       error: e => {
         this.saving.set(false);
-        this.formError.set(e.error?.slug?.[0] ?? e.error?.name?.[0] ?? `Erreur ${e.status}`);
+        this.formError.set(e.error?.slug?.[0] ?? e.error?.name?.[0] ?? e.error?.protocol?.[0]
+          ?? messageErreur(e, 'Enregistrement impossible'));
       },
     });
   }
 
   deleteSensor(s: Sensor): void {
     if (!confirm(`Supprimer "${s.name}" et toutes ses données ?`)) return;
-    this.lora.deleteSensor(s.id).subscribe(() => this.loadSensors());
+    this.lora.deleteSensor(s.id).subscribe({
+      next: () => this.loadSensors(),
+      error: e => this.listError.set(messageErreur(e, `Suppression de « ${s.name} » impossible`)),
+    });
   }
 
   // Gestion des accès utilisateurs
@@ -133,7 +140,7 @@ export class SensorAdminComponent implements OnInit {
     this.usersError.set(null);
     this.lora.getSensorUsers(s.id).subscribe({
       next: acc => this.userAccesses.set(acc),
-      error: e  => this.usersError.set(`Erreur ${e.status}`),
+      error: e  => this.usersError.set(messageErreur(e, 'Chargement des accès impossible')),
     });
   }
 
@@ -142,14 +149,17 @@ export class SensorAdminComponent implements OnInit {
     if (!s || !this.newEmail.trim()) return;
     this.lora.addSensorUser(s.id, this.newEmail.trim().toLowerCase()).subscribe({
       next: () => { this.newEmail = ''; this.loadUsers(s); },
-      error: e => this.usersError.set(`Erreur ${e.status}`),
+      error: e => this.usersError.set(messageErreur(e, 'Ajout de l\'accès impossible')),
     });
   }
 
   removeUser(email: string): void {
     const s = this.editing() ?? this.selectedSensor();
     if (!s) return;
-    this.lora.removeSensorUser(s.id, email).subscribe(() => this.loadUsers(s));
+    this.lora.removeSensorUser(s.id, email).subscribe({
+      next: () => this.loadUsers(s),
+      error: e => this.usersError.set(messageErreur(e, 'Retrait de l\'accès impossible')),
+    });
   }
 
   autoSlug(): void {

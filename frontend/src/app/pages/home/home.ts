@@ -1,5 +1,6 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
+import { messageErreur } from '../../core/http-error';
 import { LoraService, DashboardGroup } from '../../core/lora.service';
 import { KeycloakService } from '../../core/keycloak.service';
 import { GroupPanelComponent } from './group-panel';
@@ -25,7 +26,7 @@ export class HomeComponent implements OnInit {
   ngOnInit(): void {
     this.lora.getDashboardGroups().subscribe({
       next:  g => { this.groups.set(g); this.loading.set(false); },
-      error: e => { this.error.set(`Erreur (${e.status ?? 'réseau'})`); this.loading.set(false); },
+      error: e => { this.error.set(messageErreur(e, 'Chargement du tableau de bord impossible')); this.loading.set(false); },
     });
   }
 }

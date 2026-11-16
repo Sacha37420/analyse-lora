@@ -147,9 +147,12 @@
   }
 
   <!-- Liste des webhooks -->
+  @if (listError()) {
+    <p class="error-msg" role="alert">{{ listError() }}</p>
+  }
   @if (loading()) {
     <p class="loading-msg">Chargement…</p>
-  } @else if (webhooks().length === 0) {
+  } @else if (webhooks().length === 0 && !listError()) {
     <p class="empty-msg">Aucun webhook créé.</p>
   } @else {
     <div class="card">

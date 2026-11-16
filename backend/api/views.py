@@ -3,14 +3,14 @@ from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 from rest_framework import status
-from rest_framework.exceptions import NotAuthenticated, PermissionDenied
+from rest_framework.exceptions import NotAuthenticated, PermissionDenied, ValidationError
 from rest_framework.generics import ListCreateAPIView, RetrieveUpdateDestroyAPIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .formula import FormulaError, compile_formula, evaluate, safe_eval
-from .models import ComputedMeasure, Sensor, SensorReading, SensorUserAccess, Webhook, WebhookUserAccess
+from .models import PROTOCOL_CHOICES, ComputedMeasure, Sensor, SensorReading, SensorUserAccess, Webhook, WebhookUserAccess
 from .permissions import HasSensorAccess, IsDeveloper, _is_developer
 from .serializers import (
     ComputedMeasureSerializer,
@@ -248,30 +248,65 @@ def _has_sensor_access(user, sensor) -> bool:
     return bool(sensor.webhook_id) and sensor.webhook.user_accesses.filter(user_email=email).exists()
 
 
+def _parse_timestamp(value, default):
+    """Horodatage d'un payload : `default` s'il est absent, None s'il est illisible."""
+    if not value:
+        return default
+    if not isinstance(value, str):
+        return None
+    try:
+        return parse_datetime(value)
+    except ValueError:      # bien formé mais impossible (mois 13, 30 février…)
+        return None
+
+
 def _normalize_payload(payload: dict, protocol: str):
-    """Normalise les formats TTN / ChirpStack / standard vers (timestamp, data)."""
+    """Normalise les formats TTN / ChirpStack / standard vers (timestamp, data).
+    `timestamp` vaut None quand l'horodatage fourni est illisible."""
     now = timezone.now()
 
     # TTN v3
     if 'uplink_message' in payload:
         um     = payload['uplink_message']
         ts_str = um.get('received_at') or payload.get('received_at')
-        ts     = parse_datetime(ts_str) if ts_str else now
+        ts     = _parse_timestamp(ts_str, now)
         data   = um.get('decoded_payload') or um.get('frm_payload') or {}
         return ts, data
 
     # ChirpStack v4
     if 'deviceInfo' in payload:
         ts_str = payload.get('time')
-        ts     = parse_datetime(ts_str) if ts_str else now
+        ts     = _parse_timestamp(ts_str, now)
         data   = payload.get('object') or {}
         return ts, data
 
     # Format standard
     ts_str = payload.get('timestamp')
-    ts     = parse_datetime(ts_str) if ts_str else now
+    ts     = _parse_timestamp(ts_str, now)
     data   = payload.get('data', payload)
     return ts, data
+
+
+def _filter_period(qs, params):
+    """Filtre `start` / `end` (bornes incluses). Une date illisible donne un 400
+    explicite : `parse_datetime` rendait None, et le filtre une erreur 500."""
+    for name, lookup in (('start', 'timestamp__gte'), ('end', 'timestamp__lte')):
+        raw = params.get(name)
+        if not raw:
+            continue
+        try:
+            bound = parse_datetime(raw)
+        except ValueError:
+            bound = None
+        if bound is None:
+            raise ValidationError({name: "Date illisible : format ISO 8601 attendu (ex. 2026-07-14T10:00:00Z)."})
+        qs = qs.filter(**{lookup: bound})
+    return qs
+
+
+# Réponses d'ingestion refusée (400) — message fixe, sans écho du payload.
+_PAYLOAD_NOT_OBJECT = "Le corps de la requête doit être un objet JSON."
+_TIMESTAMP_UNREADABLE = "Horodatage illisible : format ISO 8601 attendu (ex. 2026-07-14T10:00:00Z)."
 
 
 def _extract_external_device_id(payload: dict, protocol: str) -> str:
@@ -481,14 +516,7 @@ class SensorDataView(APIView):
         if not self._check_access(request, sensor):
             return Response({'error': 'Accès refusé'}, status=status.HTTP_403_FORBIDDEN)
 
-        qs = sensor.readings.all()
-
-        start = request.query_params.get('start')
-        end   = request.query_params.get('end')
-        if start:
-            qs = qs.filter(timestamp__gte=parse_datetime(start))
-        if end:
-            qs = qs.filter(timestamp__lte=parse_datetime(end))
+        qs = _filter_period(sensor.readings.all(), request.query_params)
 
         try:
             page_size = min(int(request.query_params.get('page_size', 100)), 1000)
@@ -512,7 +540,11 @@ class SensorDataView(APIView):
             return Response({'error': 'Accès refusé'}, status=status.HTTP_403_FORBIDDEN)
 
         payload             = request.data
+        if not isinstance(payload, dict):
+            return Response({'error': _PAYLOAD_NOT_OBJECT}, status=status.HTTP_400_BAD_REQUEST)
         timestamp, data     = _normalize_payload(payload, sensor.protocol)
+        if timestamp is None:
+            return Response({'error': _TIMESTAMP_UNREADABLE}, status=status.HTTP_400_BAD_REQUEST)
 
         reading = SensorReading.objects.create(
             sensor=sensor,
@@ -574,6 +606,8 @@ class SensorConnectionView(APIView):
             return Response({'error': 'Réservé aux developers'}, status=status.HTTP_403_FORBIDDEN)
 
         if 'protocol' in request.data:
+            if not isinstance(request.data['protocol'], str) or request.data['protocol'] not in dict(PROTOCOL_CHOICES):
+                return Response({'error': 'Protocole inconnu.'}, status=status.HTTP_400_BAD_REQUEST)
             sensor.protocol = request.data['protocol']
         if 'connection_config' in request.data:
             sensor.connection_config = request.data['connection_config']
@@ -589,6 +623,12 @@ class SensorConnectionView(APIView):
                         status=status.HTTP_400_BAD_REQUEST,
                     )
                 sensor.webhook = webhook
+        if sensor.webhook is not None and sensor.webhook.protocol != sensor.protocol:
+            # Protocole changé sans toucher au webhook : même incompatibilité.
+            return Response(
+                {'error': f"Ce webhook est en protocole {sensor.webhook.protocol}, incompatible avec le protocole {sensor.protocol} du capteur."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
         sensor.save()
         return Response({
             'protocol':         sensor.protocol,
@@ -663,6 +703,8 @@ class WebhookDataView(APIView):
             return Response({'error': 'Accès refusé'}, status=status.HTTP_403_FORBIDDEN)
 
         payload     = request.data
+        if not isinstance(payload, dict):
+            return Response({'error': _PAYLOAD_NOT_OBJECT}, status=status.HTTP_400_BAD_REQUEST)
         external_id = _extract_external_device_id(payload, webhook.protocol)
         if not external_id:
             return Response(
@@ -678,6 +720,8 @@ class WebhookDataView(APIView):
             )
 
         timestamp, data = _normalize_payload(payload, webhook.protocol)
+        if timestamp is None:
+            return Response({'error': _TIMESTAMP_UNREADABLE}, status=status.HTTP_400_BAD_REQUEST)
         reading = SensorReading.objects.create(sensor=sensor, timestamp=timestamp, data=data)
         return Response(SensorReadingSerializer(reading).data, status=status.HTTP_201_CREATED)
 
@@ -753,13 +797,7 @@ class MeasureComputeView(APIView):
         if not _has_sensor_access(request.user, sensor):
             return Response({'error': 'Accès refusé'}, status=status.HTTP_403_FORBIDDEN)
 
-        qs = sensor.readings.all()
-        start = request.query_params.get('start')
-        end   = request.query_params.get('end')
-        if start:
-            qs = qs.filter(timestamp__gte=parse_datetime(start))
-        if end:
-            qs = qs.filter(timestamp__lte=parse_datetime(end))
+        qs = _filter_period(sensor.readings.all(), request.query_params)
         qs = qs.order_by('timestamp')[:2000]
 
         points = []

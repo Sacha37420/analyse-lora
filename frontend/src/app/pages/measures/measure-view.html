@@ -11,12 +11,12 @@
   <div class="range-bar card">
     <span class="range-label">Période :</span>
     <div class="form-group inline">
-      <label>Début</label>
-      <input type="datetime-local" [(ngModel)]="startDate">
+      <label for="range-start">Début</label>
+      <input id="range-start" type="datetime-local" [(ngModel)]="startDate">
     </div>
     <div class="form-group inline">
-      <label>Fin</label>
-      <input type="datetime-local" [(ngModel)]="endDate">
+      <label for="range-end">Fin</label>
+      <input id="range-end" type="datetime-local" [(ngModel)]="endDate">
     </div>
     <button class="btn btn-primary" (click)="refreshAll()">Actualiser les graphiques</button>
   </div>
@@ -28,31 +28,31 @@
 
       <div class="form-row">
         <div class="form-group">
-          <label>Nom</label>
-          <input [(ngModel)]="formName" placeholder="Ex : Température en °F">
+          <label for="measure-name">Nom</label>
+          <input id="measure-name" [(ngModel)]="formName" placeholder="Ex : Température en °F">
         </div>
         <div class="form-group">
-          <label>Unité (optionnel)</label>
-          <input [(ngModel)]="formUnit" placeholder="°C, kPa, %…">
+          <label for="measure-unit">Unité (optionnel)</label>
+          <input id="measure-unit" [(ngModel)]="formUnit" placeholder="°C, kPa, %…">
         </div>
       </div>
 
       <div class="form-group">
-        <label>Formule Python</label>
-        <input [(ngModel)]="formFormula" placeholder="row['temperature'] * 9/5 + 32" class="formula-input">
+        <label for="measure-formula">Formule Python</label>
+        <input id="measure-formula" [(ngModel)]="formFormula" placeholder="row['temperature'] * 9/5 + 32" class="formula-input">
         <small class="hint">{{ formulaHint() }}</small>
       </div>
 
       <div class="form-row">
         <div class="form-group">
-          <label>Description</label>
-          <input [(ngModel)]="formDesc" placeholder="Optionnel">
+          <label for="measure-desc">Description</label>
+          <input id="measure-desc" [(ngModel)]="formDesc" placeholder="Optionnel">
         </div>
         <div class="form-group">
-          <label>Couleur du graphique</label>
+          <label for="measure-color">Couleur du graphique</label>
           <div class="color-pick">
-            <input type="color" [(ngModel)]="formColor">
-            <input [(ngModel)]="formColor" placeholder="#3b82f6" style="width:100px">
+            <input id="measure-color" type="color" [(ngModel)]="formColor">
+            <input [(ngModel)]="formColor" placeholder="#rrggbb" aria-label="Couleur (code hexadécimal)" style="width:100px">
           </div>
         </div>
       </div>
@@ -68,6 +68,10 @@
         <button class="btn btn-ghost" (click)="showForm.set(false)">Annuler</button>
       </div>
     </div>
+  }
+
+  @if (actionError()) {
+    <p class="error-msg" role="alert">{{ actionError() }}</p>
   }
 
   @if (loading()) {
@@ -90,7 +94,7 @@
               @if (m.unit) { <span class="badge badge-gray">{{ m.unit }}</span> }
             </div>
             <div class="chart-actions">
-              <button class="btn btn-ghost btn-sm" (click)="computeAndDraw(m)">↺</button>
+              <button class="btn btn-ghost btn-sm" (click)="computeAndDraw(m)" [attr.aria-label]="'Recalculer ' + m.name" [title]="'Recalculer ' + m.name">↺</button>
               <button class="btn btn-ghost btn-sm" (click)="openEdit(m)">Modifier</button>
               <button class="btn btn-danger btn-sm" (click)="deleteMeasure(m)">Supprimer</button>
             </div>
