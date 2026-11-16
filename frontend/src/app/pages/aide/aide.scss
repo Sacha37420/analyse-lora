@@ -170,7 +170,7 @@ pre.code {
   }
 }
 
-.compare td:nth-child(2) { background: rgba(34, 197, 94, .06); }
+.compare td:nth-child(2) { background: var(--success-tint); }
 .trouble td:first-child  { width: 38%; }
 
 /* ── Encarts ──────────────────────────────────────────────────────────────── */
@@ -188,9 +188,9 @@ pre.code {
   &.inline { margin: .6rem 0 .2rem; font-size: .875rem; }
 }
 
-.callout-key    { border-color: var(--primary); background: rgba(59, 130, 246, .07); }
-.callout-warn   { border-color: var(--warning); background: rgba(245, 158, 11, .09); }
-.callout-danger { border-color: var(--danger);  background: rgba(239, 68,  68, .07); }
+.callout-key    { border-color: var(--primary); background: var(--accent-tint); }
+.callout-warn   { border-color: var(--warning); background: var(--warning-tint); }
+.callout-danger { border-color: var(--danger);  background: var(--danger-tint); }
 
 /* ── Listes spécifiques ───────────────────────────────────────────────────── */
 
@@ -218,7 +218,7 @@ pre.code {
 
 /* ── Responsive ───────────────────────────────────────────────────────────── */
 
-@media (max-width: 900px) {
+@media (max-width: 899px) {
   .aide-layout {
     grid-template-columns: 1fr;
     gap: 1.5rem;

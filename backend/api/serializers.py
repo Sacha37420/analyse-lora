@@ -70,6 +70,22 @@ class SensorSerializer(serializers.ModelSerializer):
     def get_reading_count(self, obj) -> int:
         return obj.readings.count()
 
+    def validate(self, attrs):
+        # Un webhook ne route que les uplinks de son protocole : un capteur qui
+        # y est rattaché garde le même (règle déjà tenue par PUT …/connection/).
+        # Vérifié seulement quand l'un des deux change : un PATCH de la seule
+        # localisation météo ne bute pas sur un état antérieur.
+        if 'protocol' not in attrs and 'webhook' not in attrs:
+            return attrs
+        protocol = attrs.get('protocol', getattr(self.instance, 'protocol', None))
+        webhook  = attrs['webhook'] if 'webhook' in attrs else getattr(self.instance, 'webhook', None)
+        if webhook is not None and protocol != webhook.protocol:
+            raise serializers.ValidationError({'protocol': (
+                f"Ce capteur est rattaché au webhook « {webhook.name} » en protocole {webhook.protocol} : "
+                "détachez-le (page Connexion) avant de changer de protocole."
+            )})
+        return attrs
+
 
 class SensorReadSerializer(SensorSerializer):
     """Fiche capteur pour qui n'est pas dans `developers` (accès direct ou par

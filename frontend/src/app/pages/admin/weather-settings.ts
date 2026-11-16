@@ -2,6 +2,7 @@ import { Component, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { forkJoin } from 'rxjs';
+import { messageErreur } from '../../core/http-error';
 import { LoraService } from '../../core/lora.service';
 
 interface WeatherScope {
@@ -26,6 +27,8 @@ export class WeatherSettingsComponent implements OnInit {
   error   = signal<string | null>(null);
   savingKey = signal<string | null>(null);
   savedKey  = signal<string | null>(null);
+  /** Échec d'enregistrement d'une carte : affiché sur cette carte, sans masquer la liste. */
+  saveError = signal<{ key: string; message: string } | null>(null);
 
   ngOnInit(): void {
     this.load();
@@ -53,7 +56,7 @@ export class WeatherSettingsComponent implements OnInit {
         this.scopes.set([...webhookScopes, ...sensorScopes]);
         this.loading.set(false);
       },
-      error: e => { this.error.set(`Erreur ${e.status}`); this.loading.set(false); },
+      error: e => { this.error.set(messageErreur(e, 'Chargement des localisations impossible')); this.loading.set(false); },
     });
   }
 
@@ -69,12 +72,13 @@ export class WeatherSettingsComponent implements OnInit {
     const key = this.scopeKey(scope);
     this.savingKey.set(key);
     this.savedKey.set(null);
+    this.saveError.set(null);
     const data = { weather_location: scope.weatherLocation };
 
     const onSuccess = (): void => { this.savingKey.set(null); this.savedKey.set(key); };
     const onError = (e: { status?: number }): void => {
       this.savingKey.set(null);
-      this.error.set(`Erreur ${e.status}`);
+      this.saveError.set({ key, message: messageErreur(e, 'Enregistrement impossible') });
     };
 
     if (scope.type === 'webhook') {

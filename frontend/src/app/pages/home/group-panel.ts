@@ -4,6 +4,7 @@ import {
 } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import * as Plotly from 'plotly.js-basic-dist-min';
+import { messageErreur } from '../../core/http-error';
 import { LoraService, DashboardGroup, DashboardChartResult, GaugeData, Period, TTNBackfillResult } from '../../core/lora.service';
 import { KeycloakService } from '../../core/keycloak.service';
 import { GaugeComponent } from '../../shared/gauge/gauge';
@@ -78,7 +79,7 @@ export class GroupPanelComponent implements OnInit, OnDestroy {
         this.loading.set(false);
         if (fields.length) this.refresh();
       },
-      error: e => { this.error.set(`Erreur ${e.status}`); this.loading.set(false); },
+      error: e => { this.error.set(messageErreur(e, 'Chargement des grandeurs impossible')); this.loading.set(false); },
     });
   }
 
@@ -103,7 +104,7 @@ export class GroupPanelComponent implements OnInit, OnDestroy {
       },
       error: e => {
         this.backfilling.set(false);
-        this.backfillError.set(e.error?.error ?? `Erreur ${e.status}`);
+        this.backfillError.set(e.error?.error ?? messageErreur(e, 'Rattrapage TTN impossible'));
       },
     });
   }

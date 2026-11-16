@@ -1,6 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { DatePipe } from '@angular/common';
+import { messageErreur } from '../../core/http-error';
 import { LoraService, Sensor } from '../../core/lora.service';
 import { KeycloakService } from '../../core/keycloak.service';
 
@@ -24,7 +25,7 @@ export class SensorListComponent implements OnInit {
   ngOnInit(): void {
     this.lora.getSensors().subscribe({
       next:  s => { this.sensors.set(s); this.loading.set(false); },
-      error: e => { this.error.set(`Erreur ${e.status ?? ''}`); this.loading.set(false); },
+      error: e => { this.error.set(messageErreur(e, 'Chargement des capteurs impossible')); this.loading.set(false); },
     });
   }
 }

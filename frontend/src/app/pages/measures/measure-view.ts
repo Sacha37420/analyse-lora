@@ -6,6 +6,8 @@ import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { LoraService, ComputedMeasure, MeasurePoint, Sensor } from '../../core/lora.service';
 import { Chart, ChartData, ChartOptions, registerables } from 'chart.js';
+import { messageErreur } from '../../core/http-error';
+import { localInputToIso, toLocalInput } from '../../core/local-datetime';
 
 Chart.register(...registerables);
 
@@ -24,6 +26,8 @@ export class MeasureViewComponent implements OnInit, OnDestroy {
   measures = signal<ComputedMeasure[]>([]);
   loading  = signal(true);
   error    = signal<string | null>(null);
+  /** Échec d'un calcul ou d'une suppression : affiché sans masquer les graphiques. */
+  actionError = signal<string | null>(null);
 
   // Formulaire nouvelle grandeur
   showForm    = signal(false);
@@ -31,7 +35,7 @@ export class MeasureViewComponent implements OnInit, OnDestroy {
   formName    = '';
   formFormula = '';
   formUnit    = '';
-  formColor   = '#3b82f6';
+  formColor   = this._defaultColor();
   formDesc    = '';
   formError   = signal<string | null>(null);
   saving      = signal(false);
@@ -58,22 +62,25 @@ export class MeasureViewComponent implements OnInit, OnDestroy {
 
   loadMeasures(): void {
     this.loading.set(true);
+    this.error.set(null);
+    this.actionError.set(null);
     this.lora.getMeasures(this.sensorId).subscribe({
       next: m => {
         this.measures.set(m);
         this.loading.set(false);
         setTimeout(() => m.forEach(measure => this.computeAndDraw(measure)), 100);
       },
-      error: e => { this.error.set(`Erreur ${e.status}`); this.loading.set(false); },
+      error: e => { this.error.set(messageErreur(e, 'Chargement des grandeurs impossible')); this.loading.set(false); },
     });
   }
 
   computeAndDraw(measure: ComputedMeasure): void {
     this.lora.computeMeasure(measure.id, {
-      start: this.startDate || undefined,
-      end:   this.endDate   || undefined,
+      start: localInputToIso(this.startDate),
+      end:   localInputToIso(this.endDate),
     }).subscribe({
       next: result => this.drawChart(measure, result.points),
+      error: e => this.actionError.set(messageErreur(e, `Calcul de « ${measure.name} » impossible`)),
     });
   }
 
@@ -131,6 +138,7 @@ export class MeasureViewComponent implements OnInit, OnDestroy {
   }
 
   refreshAll(): void {
+    this.actionError.set(null);
     this.measures().forEach(m => this.computeAndDraw(m));
   }
 
@@ -138,7 +146,7 @@ export class MeasureViewComponent implements OnInit, OnDestroy {
   openCreate(): void {
     this.editingId.set(null);
     this.formName = ''; this.formFormula = ''; this.formUnit = '';
-    this.formColor = '#3b82f6'; this.formDesc = '';
+    this.formColor = this._defaultColor(); this.formDesc = '';
     this.formError.set(null);
     this.showForm.set(true);
   }
@@ -167,20 +175,30 @@ export class MeasureViewComponent implements OnInit, OnDestroy {
       next: () => { this.saving.set(false); this.showForm.set(false); this.loadMeasures(); },
       error: e => {
         this.saving.set(false);
-        this.formError.set(e.error?.formula?.[0] ?? e.error?.name?.[0] ?? `Erreur ${e.status}`);
+        this.formError.set(e.error?.formula?.[0] ?? e.error?.name?.[0] ?? e.error?.color?.[0]
+          ?? messageErreur(e, 'Enregistrement impossible'));
       },
     });
   }
 
   deleteMeasure(m: ComputedMeasure): void {
     if (!confirm(`Supprimer "${m.name}" ?`)) return;
-    this.lora.deleteMeasure(m.id).subscribe(() => this.loadMeasures());
+    this.lora.deleteMeasure(m.id).subscribe({
+      next: () => this.loadMeasures(),
+      error: e => this.actionError.set(messageErreur(e, `Suppression de « ${m.name} » impossible`)),
+    });
   }
 
   private _defaultStart(): string {
+    // Heure locale : `toISOString()` donnait l'heure UTC, affichée comme locale.
     const d = new Date();
     d.setDate(d.getDate() - 7);
-    return d.toISOString().slice(0, 16);
+    return toLocalInput(d);
+  }
+
+  /** Couleur proposée pour une nouvelle grandeur : premier token de série Foyer. */
+  private _defaultColor(): string {
+    return getComputedStyle(document.documentElement).getPropertyValue('--series-1').trim();
   }
 
   formulaHint(): string {

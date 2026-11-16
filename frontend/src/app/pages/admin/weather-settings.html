@@ -55,6 +55,9 @@
             @if (savedKey() === scopeKey(s)) {
               <span class="save-ok">✓ Enregistré</span>
             }
+            @if (saveError()?.key === scopeKey(s)) {
+              <span class="error-msg" role="alert">{{ saveError()!.message }}</span>
+            }
           </div>
         </div>
       }

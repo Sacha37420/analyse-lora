@@ -1,6 +1,7 @@
 import { Component, inject, OnInit, signal } from '@angular/core';
 import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { messageErreur } from '../../core/http-error';
 import { LoraService, Webhook, ConnectionMethod, UserAccess } from '../../core/lora.service';
 
 @Component({
@@ -18,6 +19,7 @@ export class WebhookAdminComponent implements OnInit {
   webhooks = signal<Webhook[]>([]);
   methods  = signal<ConnectionMethod[]>([]);
   loading  = signal(true);
+  listError = signal<string | null>(null);
 
   // Formulaire création/édition
   editing      = signal<Webhook | null>(null);
@@ -59,9 +61,10 @@ export class WebhookAdminComponent implements OnInit {
 
   loadWebhooks(): void {
     this.loading.set(true);
+    this.listError.set(null);
     this.lora.getWebhooks().subscribe({
       next: w => { this.webhooks.set(w); this.loading.set(false); this.checkEditRoute(); },
-      error: () => this.loading.set(false),
+      error: e => { this.listError.set(messageErreur(e, 'Chargement des webhooks impossible')); this.loading.set(false); },
     });
   }
 
@@ -100,7 +103,7 @@ export class WebhookAdminComponent implements OnInit {
     this.usersError.set(null);
     this.lora.getWebhookUsers(w.id).subscribe({
       next: acc => this.userAccesses.set(acc),
-      error: e  => this.usersError.set(`Erreur ${e.status}`),
+      error: e  => this.usersError.set(messageErreur(e, 'Chargement des accès impossible')),
     });
   }
 
@@ -109,14 +112,17 @@ export class WebhookAdminComponent implements OnInit {
     if (!w || !this.newEmail.trim()) return;
     this.lora.addWebhookUser(w.id, this.newEmail.trim().toLowerCase()).subscribe({
       next: () => { this.newEmail = ''; this.loadUsers(w); },
-      error: e => this.usersError.set(`Erreur ${e.status}`),
+      error: e => this.usersError.set(messageErreur(e, 'Ajout de l\'accès impossible')),
     });
   }
 
   removeUser(email: string): void {
     const w = this.editing();
     if (!w) return;
-    this.lora.removeWebhookUser(w.id, email).subscribe(() => this.loadUsers(w));
+    this.lora.removeWebhookUser(w.id, email).subscribe({
+      next: () => this.loadUsers(w),
+      error: e => this.usersError.set(messageErreur(e, 'Retrait de l\'accès impossible')),
+    });
   }
 
   onProtocolChange(): void {
@@ -148,7 +154,7 @@ export class WebhookAdminComponent implements OnInit {
       next: () => { this.saving.set(false); this.showForm.set(false); this.loadWebhooks(); },
       error: e => {
         this.saving.set(false);
-        this.formError.set(e.error?.name?.[0] ?? `Erreur ${e.status}`);
+        this.formError.set(e.error?.name?.[0] ?? messageErreur(e, 'Enregistrement impossible'));
       },
     });
   }
@@ -156,10 +162,13 @@ export class WebhookAdminComponent implements OnInit {
   deleteWebhook(w: Webhook): void {
     const count = w.sensor_count;
     const warn = count > 0
-      ? ` ${count} capteur(s) rattaché(s) perdront leur configuration réseau partagée (app_id/region/clé) et devront être reconfigurés.`
+      ? ` ${count} capteur(s) rattaché(s) perdront leur configuration réseau partagée (app_id/region/clé) et devront être reconfigurés. Les accès donnés par ce webhook seront retirés.`
       : '';
     if (!confirm(`Supprimer le webhook "${w.name}" ?${warn}`)) return;
-    this.lora.deleteWebhook(w.id).subscribe(() => this.loadWebhooks());
+    this.lora.deleteWebhook(w.id).subscribe({
+      next: () => this.loadWebhooks(),
+      error: e => this.listError.set(messageErreur(e, `Suppression de « ${w.name} » impossible`)),
+    });
   }
 
   ingestUrl(w: Webhook): string {

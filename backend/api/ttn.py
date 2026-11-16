@@ -49,7 +49,8 @@ def fetch_stored_uplinks(config: dict, device_id: str | None = None) -> list[dic
             timeout=TIMEOUT_S,
         )
     except requests.RequestException as e:
-        raise TTNError(f"TTN injoignable : {e}") from e
+        # Message fixe : le texte d'une exception `requests` porte l'URL demandée.
+        raise TTNError("TTN injoignable : réessayez plus tard.") from e
 
     if r.status_code in (401, 403):
         raise TTNError(
@@ -62,7 +63,7 @@ def fetch_stored_uplinks(config: dict, device_id: str | None = None) -> list[dic
             "n'est probablement pas activée (Console TTN → Integrations → Storage Integration)."
         )
     if r.status_code != 200:
-        raise TTNError(f"TTN a répondu {r.status_code} : {r.text[:200]}")
+        raise TTNError(f"TTN a répondu par une erreur (code {r.status_code}) : réessayez plus tard.")
 
     # Réponse en flux : un objet JSON {"result": {...}} par message, séparés par des lignes vides.
     uplinks = []
@@ -70,7 +71,10 @@ def fetch_stored_uplinks(config: dict, device_id: str | None = None) -> list[dic
         line = line.strip()
         if not line:
             continue
-        obj = json.loads(line)
+        try:
+            obj = json.loads(line)
+        except ValueError as e:
+            raise TTNError("Réponse de TTN illisible : réessayez plus tard.") from e
         if 'error' in obj:
             raise TTNError(f"Erreur TTN : {obj['error'].get('message', obj['error'])}")
         if 'result' in obj:
@@ -94,7 +98,10 @@ def backfill(config: dict, sensors: list, device_id: str | None = None) -> dict:
         if sensor is None:
             unmatched.add(dev_id)
             continue
-        received[sensor.id].append(_normalize_payload(up, 'ttn'))
+        ts, data = _normalize_payload(up, 'ttn')
+        if ts is None:      # horodatage illisible : ni comparable, ni insérable
+            continue
+        received[sensor.id].append((ts, data))
 
     to_insert, per_sensor, oldest = [], [], None
     for sensor in by_device.values():
